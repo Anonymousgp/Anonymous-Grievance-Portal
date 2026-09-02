@@ -1,0 +1,989 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Anonymous Grievance Portal | বেনামী অভিযোগ পোর্টাল</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Bengali:wght@400;500;600;700&family=Public+Sans:ital,wght@0,400;0,500;0,600;0,700;0,800;1,400&display=swap" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<style>
+  :root{
+    --green-deep:#0b3d2e;
+    --green:#0f5c3f;
+    --green-bright:#0e7a4f;
+    --red:#c9312a;
+    --paper:#f6f4ee;
+    --paper-raised:#ffffff;
+    --ink:#1c2420;
+    --ink-soft:#5a655e;
+    --line:#d9d3c4;
+    --gold:#b8894a;
+    --pending:#8a7a3f;
+    --published:#0f5c3f;
+    --solved:#1c6e4a;
+    --dismissed:#8c3d34;
+    --radius:3px;
+  }
+  *{box-sizing:border-box;}
+  html,body{margin:0;padding:0;}
+  body{
+    background:var(--paper);
+    color:var(--ink);
+    font-family:'Public Sans', 'Noto Sans Bengali', sans-serif;
+    line-height:1.5;
+  }
+  .bn{font-family:'Noto Sans Bengali','Public Sans',sans-serif;}
+  .bi{display:flex; flex-direction:column; gap:0px;}
+  .bi .en{font-weight:600;}
+  .bi .bn-sub{font-family:'Noto Sans Bengali',sans-serif; font-size:0.82em; color:var(--ink-soft); font-weight:500;}
+
+  a{color:inherit;}
+  button{font-family:inherit; cursor:pointer;}
+
+  /* ===== Top bar ===== */
+  .topbar{
+    background:var(--green-deep);
+    color:#f2efe4;
+    border-bottom:4px solid var(--gold);
+  }
+  .topbar-inner{
+    max-width:1180px; margin:0 auto; padding:18px 20px;
+    display:flex; align-items:center; justify-content:space-between; gap:16px;
+  }
+  .brand{display:flex; align-items:center; gap:12px;}
+  .brand-mark{
+    width:42px;height:42px;border-radius:50%;
+    background:var(--red);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800; font-size:18px; color:#fff; flex:none;
+    border:2px solid #f2efe4;
+  }
+  .brand-title .en{font-size:20px; font-weight:700; letter-spacing:0.2px;}
+  .brand-title .bn-sub{color:#cfead9; font-size:13px;}
+  .topbar-note{font-size:12.5px; color:#cfead9; text-align:right; max-width:300px;}
+
+  /* ===== Warning banner ===== */
+  .warning-banner{
+    background:#fdf3e0; border-bottom:1px solid #e8d9ad; color:#5b451a;
+    font-size:14px; padding:10px 20px;
+  }
+  .warning-banner-inner{max-width:1180px;margin:0 auto;display:flex;gap:10px;align-items:flex-start;}
+  .warning-banner-inner .mark{font-weight:800;color:var(--red); flex:none;}
+
+  /* ===== Layout ===== */
+  .wrap{max-width:1180px;margin:0 auto;padding:24px 20px 60px;}
+  .layout{display:grid; grid-template-columns:250px 1fr; gap:24px; align-items:start;}
+  @media (max-width:860px){ .layout{grid-template-columns:1fr;} }
+
+  .panel{
+    background:var(--paper-raised);
+    border:1px solid var(--line);
+    border-radius:var(--radius);
+    padding:18px;
+  }
+  .panel + .panel{margin-top:18px;}
+  .panel h3{margin:0 0 12px; font-size:15px; letter-spacing:.2px;}
+  .panel h3 .bn-sub{display:block;font-size:12px;font-weight:500;color:var(--ink-soft);margin-top:1px;}
+
+  /* Sidebar */
+  .sidebar{position:sticky; top:16px;}
+  .district-list{list-style:none;margin:0;padding:0;max-height:360px;overflow-y:auto;}
+  .district-list li{border-bottom:1px solid #ece7d9;}
+  .district-list button{
+    width:100%;text-align:left;background:none;border:none;padding:8px 6px;
+    font-size:13.5px;color:var(--ink); border-radius:2px;
+  }
+  .district-list button:hover{background:#f0ede1;}
+  .district-list button.active{background:var(--green); color:#fff;}
+
+  /* Search */
+  .search-row{display:flex; gap:8px;}
+  .search-row input{
+    flex:1;padding:9px 10px;border:1px solid var(--line);border-radius:var(--radius);
+    font-size:14px; font-family:inherit; background:#fdfcf9;
+  }
+  .search-row button{
+    background:var(--green); color:#fff; border:none; padding:0 16px;border-radius:var(--radius);
+    font-weight:600; font-size:13.5px;
+  }
+  #dateFilter, #adminDateFilter{
+    padding:6px 8px;border:1px solid var(--line);border-radius:var(--radius);font-size:13px;font-family:inherit;background:#fdfcf9;
+  }
+
+  /* Sort/filter row */
+  .feed-controls{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
+  .active-filter-chip{
+    display:inline-flex;align-items:center;gap:6px;background:#eef3ea;border:1px solid #c9dcc4;
+    padding:4px 10px;border-radius:20px;font-size:12.5px;color:var(--green-deep);
+  }
+  .active-filter-chip button{background:none;border:none;color:var(--red);font-weight:700;}
+
+  /* Post card */
+  .post{
+    background:var(--paper-raised); border:1px solid var(--line); border-radius:var(--radius);
+    padding:18px; margin-bottom:14px;
+  }
+  .post-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;}
+  .post-loc{font-size:12px;color:var(--ink-soft);}
+  .status-badge{
+    font-size:11.5px;font-weight:700;letter-spacing:.3px;padding:3px 10px;border-radius:20px;color:#fff;flex:none;
+  }
+  .status-published{background:var(--published);}
+  .status-solved{background:var(--solved);}
+  .status-dismissed{background:var(--dismissed);}
+  .status-pending{background:var(--pending);}
+
+  .post-topic{font-size:17px;font-weight:700;margin:10px 0 4px;}
+  .post-details{font-size:14.5px;color:#333;white-space:pre-wrap;}
+  .post-meta{font-size:12px;color:var(--ink-soft);margin-top:10px;}
+
+  .vote-row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
+  .vote-btn{
+    border:1px solid var(--line); background:#fbfaf6; padding:7px 12px;border-radius:20px;
+    font-size:13px; display:flex; gap:6px; align-items:center; font-weight:600;
+  }
+  .vote-btn .count{background:#e9e5d6;padding:1px 7px;border-radius:20px;font-size:12px;}
+  .vote-btn.true:hover{border-color:#1c6e4a;}
+  .vote-btn.false:hover{border-color:#8c3d34;}
+  .vote-btn.solved:hover{border-color:#0e7a4f;}
+  .vote-btn.unsolved:hover{border-color:#b8894a;}
+  .vote-btn.voted{opacity:.55; cursor:default;}
+  .vote-btn:disabled{cursor:not-allowed;}
+
+  .empty-state{padding:40px 20px;text-align:center;color:var(--ink-soft);}
+  .empty-state .en{font-size:15px;font-weight:600;color:var(--ink);}
+
+  /* Form */
+  .field{margin-bottom:14px;}
+  .field label{display:block;font-size:13px;font-weight:600;margin-bottom:5px;}
+  .field label .bn-sub{font-weight:500;color:var(--ink-soft);font-size:12px;margin-left:4px;}
+  .field select, .field input[type=text], .field textarea{
+    width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:var(--radius);
+    font-family:inherit; font-size:14px; background:#fdfcf9;
+  }
+  .field textarea{resize:vertical;min-height:100px;}
+  .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
+  @media (max-width:520px){.grid2{grid-template-columns:1fr;}}
+
+  .btn-primary{
+    background:var(--red); color:#fff; border:none; padding:12px 20px;border-radius:var(--radius);
+    font-weight:700; font-size:14.5px; width:100%;
+  }
+  .btn-primary:hover{background:#a92a24;}
+  .form-note{font-size:12px;color:var(--ink-soft); margin-top:10px;}
+
+  .toast{
+    position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
+    background:var(--green-deep);color:#fff;padding:12px 22px;border-radius:24px;font-size:14px;
+    box-shadow:0 6px 20px rgba(0,0,0,.25); z-index:999; display:none;
+  }
+
+  /* Footer + hidden admin trigger */
+  footer{border-top:1px solid var(--line); margin-top:30px; padding:20px; text-align:center; color:var(--ink-soft); font-size:12.5px;}
+  .admin-dot{
+    display:inline-block; width:7px;height:7px; border-radius:50%; background:var(--line); border:none;
+    margin-left:8px; cursor:pointer; vertical-align:middle; opacity:.7; transition:opacity .15s, transform .15s;
+  }
+  .admin-dot:hover{opacity:1; transform:scale(1.4); background:var(--gold);}
+
+  /* Modal */
+  .modal-overlay{
+    position:fixed;inset:0;background:rgba(15,20,17,.55);display:none;align-items:center;justify-content:center;
+    z-index:1000; padding:20px;
+  }
+  .modal-overlay.open{display:flex;}
+  .modal{
+    background:#fff;border-radius:6px;max-width:440px;width:100%;padding:24px;
+    max-height:90vh;overflow-y:auto;
+  }
+  .modal h2{margin-top:0;font-size:18px;}
+  .modal-close{float:right;background:none;border:none;font-size:20px;color:var(--ink-soft);}
+
+  /* Admin dashboard */
+  .admin-overlay{position:fixed;inset:0;background:var(--paper);z-index:1001;overflow-y:auto;display:none;}
+  .admin-overlay.open{display:block;}
+  .admin-header{
+    background:var(--green-deep);color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;
+  }
+  .admin-body{max-width:1100px;margin:0 auto;padding:24px;}
+  .stat-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;}
+  .stat-box{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px 20px;min-width:130px;cursor:pointer;transition:box-shadow .15s, border-color .15s;}
+  .stat-box:hover{border-color:var(--green); box-shadow:0 2px 8px rgba(15,92,63,.12);}
+  .stat-box.active{border-color:var(--green-deep); background:#eef3ea; box-shadow:0 2px 8px rgba(15,92,63,.18);}
+  .stat-box .num{font-size:26px;font-weight:800;color:var(--green-deep);}
+  .stat-box .lbl{font-size:12px;color:var(--ink-soft);}
+  .admin-tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid var(--line);}
+  .admin-tab{padding:10px 16px;background:none;border:none;font-weight:600;font-size:13.5px;color:var(--ink-soft);border-bottom:2px solid transparent;}
+  .admin-tab.active{color:var(--green-deep);border-bottom-color:var(--green-deep);}
+  table{width:100%;border-collapse:collapse;background:#fff;font-size:13px;}
+  table th,table td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;}
+  table th{background:#f0ede1;font-size:12px;}
+  .row-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
+  .row-actions select{padding:5px;border-radius:3px;border:1px solid var(--line);font-size:12px;}
+  .btn-mini{border:1px solid var(--line);background:#fbfaf6;padding:5px 10px;border-radius:3px;font-size:12px;font-weight:600;}
+  .btn-mini.danger{color:var(--red);border-color:#e3b7b3;}
+  .btn-mini.primary{background:var(--green);color:#fff;border:none;}
+  .err-msg{color:var(--red);font-size:13px;margin-top:6px;display:none;}
+  .ok-msg{color:var(--green);font-size:13px;margin-top:6px;display:none;}
+</style>
+</head>
+<body>
+
+<div class="topbar">
+  <div class="topbar-inner">
+    <div class="brand">
+      <div class="brand-mark">✓</div>
+      <div class="brand-title">
+        <div class="en">Anonymous Grievance Portal</div>
+        <div class="bn-sub bn">বেনামী অভিযোগ পোর্টাল</div>
+      </div>
+    </div>
+    <div class="topbar-note bn">
+      100% Anonymous — no name, phone, or contact info is ever collected.<br>
+      <span class="bn">সম্পূর্ণ বেনামী — কোনো নাম, ফোন নম্বর বা পরিচয় সংগ্রহ করা হয় না।</span>
+    </div>
+  </div>
+</div>
+
+<div class="warning-banner">
+  <div class="warning-banner-inner">
+    <span class="mark">!</span>
+    <span>
+      <b>Do not share any names, phone numbers, addresses, NID or personal identifying information in your complaint.</b> Complaints containing personal details will be rejected during review.<br>
+      <span class="bn">অভিযোগে কারো নাম, ফোন নম্বর, ঠিকানা, এনআইডি বা কোনো ব্যক্তিগত তথ্য উল্লেখ করবেন না। ব্যক্তিগত তথ্যযুক্ত অভিযোগ যাচাইকালে বাতিল করা হবে।</span>
+    </span>
+  </div>
+</div>
+
+<div class="wrap">
+  <div class="layout">
+
+    <!-- SIDEBAR -->
+    <div class="sidebar">
+      <div class="panel">
+        <h3>Filter by District<span class="bn-sub">জেলা অনুযায়ী ফিল্টার করুন</span></h3>
+        <ul class="district-list" id="districtFilterList"></ul>
+      </div>
+
+      <div class="panel">
+        <h3>Submit a Complaint<span class="bn-sub">অভিযোগ জমা দিন</span></h3>
+        <form id="complaintForm">
+          <div class="field">
+            <label>Division <span class="bn-sub bn">বিভাগ</span></label>
+            <select id="fDivision" required></select>
+          </div>
+          <div class="field">
+            <label>District <span class="bn-sub bn">জেলা</span></label>
+            <select id="fDistrict" required disabled><option value="">Select division first</option></select>
+          </div>
+          <div class="field">
+            <label>Upazila <span class="bn-sub bn">উপজেলা</span></label>
+            <select id="fUpazila" required disabled><option value="">Select district first</option></select>
+          </div>
+          <div class="field" id="upazilaOtherWrap" style="display:none;">
+            <label>Enter Upazila name <span class="bn-sub bn">উপজেলার নাম লিখুন</span></label>
+            <input type="text" id="fUpazilaOther">
+          </div>
+          <div class="field">
+            <label>Thana <span class="bn-sub bn">থানা</span></label>
+            <select id="fThana" required disabled><option value="">Select district first</option></select>
+          </div>
+          <div class="field" id="thanaOtherWrap" style="display:none;">
+            <label>Enter Thana name <span class="bn-sub bn">থানার নাম লিখুন</span></label>
+            <input type="text" id="fThanaOther">
+          </div>
+          <div class="field">
+            <label>Topic <span class="bn-sub bn">বিষয়</span></label>
+            <input type="text" id="fTopic" maxlength="120" placeholder="Short title of the issue" required>
+          </div>
+          <div class="field">
+            <label>Details <span class="bn-sub bn">বিস্তারিত বিবরণ</span></label>
+            <textarea id="fDetails" maxlength="2000" placeholder="Describe the issue clearly. Do not include any names or contact numbers." required></textarea>
+          </div>
+          <button type="submit" class="btn-primary">Submit Anonymously <span class="bn">/ বেনামে জমা দিন</span></button>
+          <div class="form-note">Your complaint will be reviewed by an admin before appearing publicly. No identifying data is stored.<br><span class="bn">যাচাইয়ের পর অভিযোগটি প্রকাশ্যে প্রকাশ করা হবে। কোনো পরিচয়মূলক তথ্য সংরক্ষণ করা হয় না।</span></div>
+        </form>
+      </div>
+    </div>
+
+    <!-- MAIN FEED -->
+    <div>
+      <div class="panel">
+        <div class="search-row">
+          <input type="text" id="searchInput" placeholder="Search by topic, complaint no., or location... / বিষয়, অভিযোগ নম্বর বা এলাকা দিয়ে খুঁজুন...">
+          <button id="searchBtn">Search</button>
+        </div>
+      </div>
+
+      <div class="feed-controls">
+        <div id="activeFilterChip"></div>
+        <div style="display:flex;align-items:center;gap:8px;">
+          <label for="dateFilter" style="font-size:12.5px;color:var(--ink-soft);">Date <span class="bn">/ তারিখ</span>:</label>
+          <input type="date" id="dateFilter">
+          <button class="btn-mini" id="dateFilterClear">All Dates</button>
+        </div>
+      </div>
+
+      <div id="feed"></div>
+    </div>
+  </div>
+</div>
+
+<footer>
+  Anonymous Grievance Portal — a community accountability tool. <span class="bn">এটি একটি জনসাধারণের জবাবদিহিতা টুল।</span>
+  <button class="admin-dot" id="adminTrigger"></button>
+</footer>
+
+<div class="toast" id="toast"></div>
+
+<!-- ADMIN LOGIN MODAL -->
+<div class="modal-overlay" id="loginOverlay">
+  <div class="modal">
+    <button class="modal-close" id="closeLogin">&times;</button>
+    <h2>Admin Login <span class="bn-sub bn" style="display:block;font-size:13px;font-weight:500;color:var(--ink-soft);">অ্যাডমিন লগইন</span></h2>
+    <div class="field">
+      <label>Username</label>
+      <input type="text" id="loginUser" autocomplete="off">
+    </div>
+    <div class="field">
+      <label>Password</label>
+      <input type="password" id="loginPass" autocomplete="off">
+    </div>
+    <div class="err-msg" id="loginErr">Invalid username or password.</div>
+    <button class="btn-primary" id="loginBtn">Login</button>
+  </div>
+</div>
+
+<!-- ADMIN DASHBOARD -->
+<div class="admin-overlay" id="adminOverlay">
+  <div class="admin-header">
+    <div><strong>Admin Dashboard</strong> <span class="bn">/ অ্যাডমিন প্যানেল</span></div>
+    <button class="btn-mini" id="logoutBtn" style="color:#1c2420;">Log out</button>
+  </div>
+  <div class="admin-body">
+    <div class="stat-row">
+      <div class="stat-box" data-status="ALL"><div class="num" id="statTotal">0</div><div class="lbl">Total Complaints</div></div>
+      <div class="stat-box" data-status="pending"><div class="num" id="statPending">0</div><div class="lbl">Pending Review</div></div>
+      <div class="stat-box" data-status="published"><div class="num" id="statPublished">0</div><div class="lbl">Published</div></div>
+      <div class="stat-box" data-status="solved"><div class="num" id="statSolved">0</div><div class="lbl">Solved</div></div>
+      <div class="stat-box" data-status="dismissed"><div class="num" id="statDismissed">0</div><div class="lbl">Dismissed</div></div>
+    </div>
+
+    <div class="admin-tabs">
+      <button class="admin-tab active" data-tab="complaints">Complaints</button>
+      <button class="admin-tab" data-tab="admins">Admin Accounts</button>
+    </div>
+
+    <div id="tabComplaints">
+      <div class="panel" style="margin-bottom:14px;">
+        <div class="search-row">
+          <input type="text" id="adminSearch" placeholder="Search by topic, complaint no., or location...">
+          <label for="adminDateFilter" style="font-size:13px;color:var(--ink-soft);align-self:center;white-space:nowrap;">Date:</label>
+          <input type="date" id="adminDateFilter">
+          <button class="btn-mini" id="adminDateFilterClear">All Dates</button>
+        </div>
+        <div id="adminStatusChip" style="margin-top:10px;"></div>
+      </div>
+      <div style="overflow-x:auto;">
+        <table id="adminTable">
+          <thead><tr>
+            <th>Complaint No.</th><th>Date</th><th>Topic</th><th>Location</th><th>Details</th><th>Reactions</th><th>Status</th><th>Actions</th>
+          </tr></thead>
+          <tbody id="adminTableBody"></tbody>
+        </table>
+      </div>
+    </div>
+
+    <div id="tabAdmins" style="display:none;">
+      <div class="panel" style="max-width:420px;margin-bottom:16px;">
+        <h3>Add New Admin</h3>
+        <div class="field"><label>Username</label><input type="text" id="newAdminUser"></div>
+        <div class="field"><label>Password</label><input type="text" id="newAdminPass"></div>
+        <button class="btn-mini primary" id="addAdminBtn">Add Admin</button>
+        <div class="ok-msg" id="addAdminOk">Admin added.</div>
+        <div class="err-msg" id="addAdminErr">Username already exists.</div>
+      </div>
+      <div class="panel" style="max-width:420px;">
+        <h3>Reset Password</h3>
+        <div class="field">
+          <label>Select Admin</label>
+          <select id="resetAdminSelect"></select>
+        </div>
+        <div class="field"><label>New Password</label><input type="text" id="resetAdminPass"></div>
+        <button class="btn-mini primary" id="resetAdminBtn">Reset Password</button>
+        <div class="ok-msg" id="resetAdminOk">Password updated.</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ============================================================
+   SUPABASE CONFIG — fill these in from your Supabase project:
+   Project Settings -> API -> Project URL / anon public key
+   ============================================================ */
+const SUPABASE_URL = "https://cgdpkgtgqoneoneedgiw.supabase.co/rest/v1/";
+const SUPABASE_ANON_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImNnZHBrZ3RncW9uZW9uZWVkZ2l3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3ODgzMDQyMTYsImV4cCI6MjEwMzg4MDIxNn0.wgX2st_7VGM0_vGAU9dT1Z4kBwwk2hFdXy1g4Ombo1o";
+
+const sb = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+/* ============ DATA: Divisions & Districts (Bangladesh, 8 divisions / 64 districts) ============ */
+const BD = {
+  "Barishal": ["Barguna","Barishal","Bhola","Jhalokati","Patuakhali","Pirojpur"],
+  "Chattogram": ["Bandarban","Brahmanbaria","Chandpur","Chattogram","Cumilla","Cox's Bazar","Feni","Khagrachhari","Lakshmipur","Noakhali","Rangamati"],
+  "Dhaka": ["Dhaka","Faridpur","Gazipur","Gopalganj","Kishoreganj","Madaripur","Manikganj","Munshiganj","Narayanganj","Narsingdi","Rajbari","Shariatpur","Tangail"],
+  "Khulna": ["Bagerhat","Chuadanga","Jashore","Jhenaidah","Khulna","Kushtia","Magura","Meherpur","Narail","Satkhira"],
+  "Mymensingh": ["Jamalpur","Mymensingh","Netrokona","Sherpur"],
+  "Rajshahi": ["Bogura","Chapainawabganj","Joypurhat","Naogaon","Natore","Pabna","Rajshahi","Sirajganj"],
+  "Rangpur": ["Dinajpur","Gaibandha","Kurigram","Lalmonirhat","Nilphamari","Panchagarh","Rangpur","Thakurgaon"],
+  "Sylhet": ["Habiganj","Moulvibazar","Sunamganj","Sylhet"]
+};
+// Note: Bangladesh has ~495 upazilas and thousands of unions/thanas — too many to hand-list here.
+// Each district gets a "Sadar" default plus an "Other" option where the user can type the exact upazila/thana.
+const OTHER = "__other__";
+
+/* ============ Local-only helpers (no personal data — just UI state) ============ */
+const LS_VOTED = "gp_voted_v1"; // which post/vote-type buttons THIS browser has already pressed
+function loadVoted(){ return JSON.parse(localStorage.getItem(LS_VOTED) || "{}"); }
+function saveVoted(v){ localStorage.setItem(LS_VOTED, JSON.stringify(v)); }
+
+/* ============ State ============ */
+let currentDistrictFilter = "ALL";
+let currentSearch = "";
+let currentDateFilter = ""; // "" = all dates, else "YYYY-MM-DD"
+let adminDateFilter = ""; // "" = all dates, else "YYYY-MM-DD"
+let adminStatusFilter = "ALL";
+let adminSearchTerm = '';
+
+let publicPosts = [];         // cache of fetched public (non-pending) complaints
+let adminPosts = [];          // cache of fetched all complaints (admin view)
+let adminCreds = null;        // {username, password} — kept in memory only, cleared on logout/reload
+
+function dateKey(ts){
+  const d = new Date(ts);
+  const y = d.getFullYear(), m = String(d.getMonth()+1).padStart(2,'0'), day = String(d.getDate()).padStart(2,'0');
+  return `${y}-${m}-${day}`; // local YYYY-MM-DD, matches <input type=date> value format
+}
+function dateLabel(ts){
+  return new Date(ts).toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'});
+}
+function dateLabelFromKey(key){
+  const [y,m,d] = key.split('-').map(Number);
+  return new Date(y, m-1, d).toLocaleDateString('en-GB', {day:'2-digit', month:'short', year:'numeric'});
+}
+function totalVotes(p){ return p.votes_true + p.votes_false + p.votes_solved + p.votes_unsolved; }
+function escapeHtml(str){
+  const d = document.createElement('div');
+  d.textContent = str;
+  return d.innerHTML;
+}
+
+/* ============ Populate location dropdowns (submission form) ============ */
+const fDivision = document.getElementById('fDivision');
+const fDistrict = document.getElementById('fDistrict');
+const fUpazila = document.getElementById('fUpazila');
+const fThana = document.getElementById('fThana');
+const upazilaOtherWrap = document.getElementById('upazilaOtherWrap');
+const thanaOtherWrap = document.getElementById('thanaOtherWrap');
+
+function initDivisionSelect(){
+  fDivision.innerHTML = '<option value="">Select / নির্বাচন করুন</option>' +
+    Object.keys(BD).map(d => `<option value="${d}">${d}</option>`).join('');
+}
+initDivisionSelect();
+
+fDivision.addEventListener('change', () => {
+  const div = fDivision.value;
+  if(!div){
+    fDistrict.innerHTML = '<option value="">Select division first</option>'; fDistrict.disabled = true;
+    resetUpazilaThana();
+    return;
+  }
+  fDistrict.disabled = false;
+  fDistrict.innerHTML = '<option value="">Select / নির্বাচন করুন</option>' +
+    BD[div].map(d => `<option value="${d}">${d}</option>`).join('');
+  resetUpazilaThana();
+});
+
+function resetUpazilaThana(){
+  fUpazila.innerHTML = '<option value="">Select district first</option>'; fUpazila.disabled = true;
+  fThana.innerHTML = '<option value="">Select district first</option>'; fThana.disabled = true;
+  upazilaOtherWrap.style.display = 'none';
+  thanaOtherWrap.style.display = 'none';
+}
+
+fDistrict.addEventListener('change', () => {
+  const dist = fDistrict.value;
+  if(!dist){ resetUpazilaThana(); return; }
+  fUpazila.disabled = false;
+  fThana.disabled = false;
+  fUpazila.innerHTML = `<option value="">Select / নির্বাচন করুন</option><option value="${dist} Sadar">${dist} Sadar</option><option value="${OTHER}">Other / টাইপ করুন...</option>`;
+  fThana.innerHTML = `<option value="">Select / নির্বাচন করুন</option><option value="${dist} Sadar Thana">${dist} Sadar Thana</option><option value="${OTHER}">Other / টাইপ করুন...</option>`;
+  upazilaOtherWrap.style.display = 'none';
+  thanaOtherWrap.style.display = 'none';
+});
+
+fUpazila.addEventListener('change', () => {
+  upazilaOtherWrap.style.display = fUpazila.value === OTHER ? 'block' : 'none';
+});
+fThana.addEventListener('change', () => {
+  thanaOtherWrap.style.display = fThana.value === OTHER ? 'block' : 'none';
+});
+
+/* ============ Submit complaint ============ */
+document.getElementById('complaintForm').addEventListener('submit', async (e) => {
+  e.preventDefault();
+  const division = fDivision.value;
+  const district = fDistrict.value;
+  let upazila = fUpazila.value;
+  let thana = fThana.value;
+  if(upazila === OTHER) upazila = document.getElementById('fUpazilaOther').value.trim();
+  if(thana === OTHER) thana = document.getElementById('fThanaOther').value.trim();
+  const topic = document.getElementById('fTopic').value.trim();
+  const details = document.getElementById('fDetails').value.trim();
+
+  if(!division || !district || !upazila || !thana || !topic || !details){
+    showToast("Please fill in all fields. / সব ঘর পূরণ করুন।");
+    return;
+  }
+
+  const submitBtn = e.target.querySelector('button[type=submit]');
+  submitBtn.disabled = true;
+  submitBtn.textContent = "Submitting... / জমা হচ্ছে...";
+
+  // NOTE: complaint_number, status, and vote counts are set automatically
+  // by the database — we never send them from the client.
+  const { error } = await sb.from('complaints').insert({
+    division, district, upazila, thana, topic, details
+  });
+
+  submitBtn.disabled = false;
+  submitBtn.innerHTML = 'Submit Anonymously <span class="bn">/ বেনামে জমা দিন</span>';
+
+  if(error){
+    console.error(error);
+    showToast("Something went wrong. Please try again. / একটি ত্রুটি হয়েছে, আবার চেষ্টা করুন।");
+    return;
+  }
+
+  e.target.reset();
+  resetUpazilaThana();
+  fDistrict.innerHTML = '<option value="">Select division first</option>'; fDistrict.disabled = true;
+  showToast("Complaint submitted for review. / যাচাইয়ের জন্য অভিযোগ জমা হয়েছে।");
+  renderAll();
+});
+
+/* ============ Toast ============ */
+let toastTimer;
+function showToast(msg){
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.style.display = 'block';
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => t.style.display = 'none', 3200);
+}
+
+/* ============ District filter sidebar ============ */
+function renderDistrictFilter(){
+  const list = document.getElementById('districtFilterList');
+  const allDistricts = Object.values(BD).flat().sort();
+  let html = `<li><button data-d="ALL" class="${currentDistrictFilter==='ALL'?'active':''}">All Districts <span class="bn">সকল জেলা</span></button></li>`;
+  html += allDistricts.map(d => `<li><button data-d="${d}" class="${currentDistrictFilter===d?'active':''}">${d}</button></li>`).join('');
+  list.innerHTML = html;
+  list.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentDistrictFilter = btn.dataset.d;
+      renderFeed();
+    });
+  });
+}
+
+document.getElementById('searchBtn').addEventListener('click', () => {
+  currentSearch = document.getElementById('searchInput').value.trim().toLowerCase();
+  renderFeed();
+});
+document.getElementById('searchInput').addEventListener('keydown', (e) => {
+  if(e.key === 'Enter'){ currentSearch = e.target.value.trim().toLowerCase(); renderFeed(); }
+});
+document.getElementById('dateFilter').addEventListener('change', (e) => {
+  currentDateFilter = e.target.value; // "" if cleared
+  renderFeed();
+});
+document.getElementById('dateFilterClear').addEventListener('click', () => {
+  currentDateFilter = "";
+  document.getElementById('dateFilter').value = "";
+  renderFeed();
+});
+
+/* ============ Public feed: fetch + render ============ */
+const STATUS_LABELS = {
+  pending: {en:"Pending", bn:"পর্যালোচনাধীন", cls:"status-pending"},
+  published: {en:"Published", bn:"প্রকাশিত", cls:"status-published"},
+  solved: {en:"Solved", bn:"সমাধান হয়েছে", cls:"status-solved"},
+  dismissed: {en:"Dismissed", bn:"খারিজ", cls:"status-dismissed"}
+};
+
+async function fetchPublicPosts(){
+  const { data, error } = await sb
+    .from('complaints')
+    .select('*')
+    .neq('status', 'pending')
+    .order('created_at', { ascending: false });
+  if(error){ console.error(error); publicPosts = []; return; }
+  publicPosts = data || [];
+}
+
+function renderFeed(){
+  document.getElementById('dateFilter').value = currentDateFilter;
+
+  let filtered = publicPosts.filter(p => currentDistrictFilter === 'ALL' || p.district === currentDistrictFilter);
+  if(currentDateFilter){
+    filtered = filtered.filter(p => dateKey(p.created_at) === currentDateFilter);
+  }
+  if(currentSearch){
+    filtered = filtered.filter(p =>
+      p.topic.toLowerCase().includes(currentSearch) ||
+      p.details.toLowerCase().includes(currentSearch) ||
+      p.division.toLowerCase().includes(currentSearch) ||
+      p.district.toLowerCase().includes(currentSearch) ||
+      p.upazila.toLowerCase().includes(currentSearch) ||
+      p.thana.toLowerCase().includes(currentSearch) ||
+      (p.complaint_number || '').toLowerCase().includes(currentSearch)
+    );
+  }
+  filtered.sort((a,b) => totalVotes(b) - totalVotes(a) || new Date(b.created_at) - new Date(a.created_at));
+
+  const feed = document.getElementById('feed');
+  const chip = document.getElementById('activeFilterChip');
+  chip.innerHTML = (currentDistrictFilter !== 'ALL' || currentSearch || currentDateFilter) ?
+    `<span class="active-filter-chip">
+      ${currentDistrictFilter !== 'ALL' ? currentDistrictFilter : ''} ${currentDateFilter ? dateLabelFromKey(currentDateFilter) : ''} ${currentSearch ? '"'+currentSearch+'"' : ''}
+      <button id="clearFilters">&times;</button>
+    </span>` : '';
+  const clearBtn = document.getElementById('clearFilters');
+  if(clearBtn) clearBtn.addEventListener('click', () => {
+    currentDistrictFilter='ALL'; currentSearch=''; currentDateFilter='';
+    document.getElementById('searchInput').value='';
+    renderFeed();
+  });
+
+  if(filtered.length === 0){
+    feed.innerHTML = `<div class="panel empty-state">
+      <div class="en">No complaints to show yet.</div>
+      <div class="bn">এখনো কোনো অভিযোগ প্রকাশিত হয়নি।</div>
+    </div>`;
+    return;
+  }
+
+  const voted = loadVoted();
+  feed.innerHTML = filtered.map(p => {
+    const st = STATUS_LABELS[p.status];
+    const v = voted[p.id] || {};
+    const date = dateLabel(p.created_at);
+    return `<div class="post">
+      <div class="post-top">
+        <div class="post-loc">
+          <strong>${p.complaint_number || ''}</strong> &middot;
+          ${p.division} &rsaquo; ${p.district} &rsaquo; ${p.upazila} &rsaquo; ${p.thana}
+        </div>
+        <div class="status-badge ${st.cls}">${st.en} / ${st.bn}</div>
+      </div>
+      <div class="post-topic">${escapeHtml(p.topic)}</div>
+      <div class="post-details">${escapeHtml(p.details)}</div>
+      <div class="post-meta">Submitted ${date}</div>
+      <div class="vote-row">
+        <button class="vote-btn true ${v.true?'voted':''}" ${v.true?'disabled':''} data-id="${p.id}" data-k="true">👍 True <span class="count">${p.votes_true}</span></button>
+        <button class="vote-btn false ${v.false?'voted':''}" ${v.false?'disabled':''} data-id="${p.id}" data-k="false">👎 False <span class="count">${p.votes_false}</span></button>
+        <button class="vote-btn solved ${v.solved?'voted':''}" ${v.solved?'disabled':''} data-id="${p.id}" data-k="solved">✅ Solved <span class="count">${p.votes_solved}</span></button>
+        <button class="vote-btn unsolved ${v.unsolved?'voted':''}" ${v.unsolved?'disabled':''} data-id="${p.id}" data-k="unsolved">⏳ Unsolved <span class="count">${p.votes_unsolved}</span></button>
+      </div>
+    </div>`;
+  }).join('');
+
+  feed.querySelectorAll('.vote-btn').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      const id = btn.dataset.id, k = btn.dataset.k;
+      const votedMap = loadVoted();
+      votedMap[id] = votedMap[id] || {};
+      if(votedMap[id][k]) return;
+
+      btn.disabled = true; // optimistic lock so a double-click can't slip through
+      const { error } = await sb.rpc('increment_vote', { p_id: id, p_type: k });
+      if(error){ console.error(error); btn.disabled = false; return; }
+
+      votedMap[id][k] = true;
+      saveVoted(votedMap);
+      const post = publicPosts.find(p => p.id === id);
+      if(post) post['votes_' + k]++;
+      renderFeed();
+    });
+  });
+}
+
+async function renderAll(){
+  renderDistrictFilter();
+  await fetchPublicPosts();
+  renderFeed();
+  if(adminCreds){ await fetchAndRenderAdmin(); }
+}
+
+/* ============ Hidden admin trigger: 3 clicks within 1 second ============ */
+let clickTimes = [];
+document.getElementById('adminTrigger').addEventListener('click', () => {
+  const now = Date.now();
+  clickTimes.push(now);
+  clickTimes = clickTimes.filter(t => now - t <= 1000);
+  if(clickTimes.length >= 3){
+    clickTimes = [];
+    openLogin();
+  }
+});
+
+document.addEventListener('keydown', (e) => {
+  if(e.ctrlKey && e.altKey && (e.key === 'a' || e.key === 'A')){
+    e.preventDefault();
+    openLogin();
+  }
+});
+
+function openLogin(){
+  document.getElementById('loginOverlay').classList.add('open');
+  document.getElementById('loginErr').style.display = 'none';
+  document.getElementById('loginUser').value = '';
+  document.getElementById('loginPass').value = '';
+}
+document.getElementById('closeLogin').addEventListener('click', () => {
+  document.getElementById('loginOverlay').classList.remove('open');
+});
+document.getElementById('loginBtn').addEventListener('click', attemptLogin);
+document.getElementById('loginUser').addEventListener('keydown', e => {
+  if(e.key === 'Enter'){ e.preventDefault(); document.getElementById('loginPass').focus(); }
+});
+document.getElementById('loginPass').addEventListener('keydown', e => { if(e.key==='Enter') attemptLogin(); });
+
+async function attemptLogin(){
+  const u = document.getElementById('loginUser').value.trim();
+  const p = document.getElementById('loginPass').value;
+  const loginBtn = document.getElementById('loginBtn');
+  loginBtn.disabled = true;
+  loginBtn.textContent = "Checking...";
+
+  const { data, error } = await sb.rpc('verify_admin', { p_username: u, p_password: p });
+
+  loginBtn.disabled = false;
+  loginBtn.textContent = "Login";
+
+  if(error || !data){
+    document.getElementById('loginErr').style.display = 'block';
+    return;
+  }
+  adminCreds = { username: u, password: p }; // kept in memory only — cleared on logout/reload
+  document.getElementById('loginOverlay').classList.remove('open');
+  document.getElementById('adminOverlay').classList.add('open');
+  await fetchAndRenderAdmin();
+}
+
+document.getElementById('logoutBtn').addEventListener('click', () => {
+  adminCreds = null;
+  adminPosts = [];
+  document.getElementById('adminOverlay').classList.remove('open');
+});
+
+/* ============ Admin tabs ============ */
+document.querySelectorAll('.admin-tab').forEach(tab => {
+  tab.addEventListener('click', async () => {
+    document.querySelectorAll('.admin-tab').forEach(t => t.classList.remove('active'));
+    tab.classList.add('active');
+    document.getElementById('tabComplaints').style.display = tab.dataset.tab === 'complaints' ? 'block' : 'none';
+    document.getElementById('tabAdmins').style.display = tab.dataset.tab === 'admins' ? 'block' : 'none';
+    if(tab.dataset.tab === 'admins') await renderAdminAccountList();
+  });
+});
+
+document.getElementById('adminSearch').addEventListener('input', (e) => {
+  adminSearchTerm = e.target.value.trim().toLowerCase();
+  renderAdminDashboard();
+});
+document.getElementById('adminDateFilter').addEventListener('change', (e) => {
+  adminDateFilter = e.target.value;
+  renderAdminDashboard();
+});
+document.getElementById('adminDateFilterClear').addEventListener('click', () => {
+  adminDateFilter = "";
+  document.getElementById('adminDateFilter').value = "";
+  renderAdminDashboard();
+});
+document.querySelectorAll('.stat-box').forEach(box => {
+  box.addEventListener('click', () => {
+    adminStatusFilter = box.dataset.status;
+    renderAdminDashboard();
+  });
+});
+
+/* ============ Admin dashboard: fetch + render ============ */
+async function fetchAndRenderAdmin(){
+  if(!adminCreds) return;
+  const { data, error } = await sb.rpc('admin_get_all_complaints', {
+    p_username: adminCreds.username, p_password: adminCreds.password
+  });
+  if(error){ console.error(error); adminPosts = []; }
+  else { adminPosts = data || []; }
+  renderAdminDashboard();
+}
+
+function renderAdminDashboard(){
+  const posts = adminPosts;
+  document.getElementById('statTotal').textContent = posts.length;
+  document.getElementById('statPending').textContent = posts.filter(p=>p.status==='pending').length;
+  document.getElementById('statPublished').textContent = posts.filter(p=>p.status==='published').length;
+  document.getElementById('statSolved').textContent = posts.filter(p=>p.status==='solved').length;
+  document.getElementById('statDismissed').textContent = posts.filter(p=>p.status==='dismissed').length;
+
+  document.querySelectorAll('.stat-box').forEach(box => {
+    box.classList.toggle('active', box.dataset.status === adminStatusFilter);
+  });
+
+  const statusChip = document.getElementById('adminStatusChip');
+  const statusLabels = {pending:'Pending Review', published:'Published', solved:'Solved', dismissed:'Dismissed'};
+  statusChip.innerHTML = adminStatusFilter !== 'ALL' ?
+    `<span class="active-filter-chip">Showing: ${statusLabels[adminStatusFilter]} <button id="clearStatusFilter">&times;</button></span>` : '';
+  const clearStatusBtn = document.getElementById('clearStatusFilter');
+  if(clearStatusBtn) clearStatusBtn.addEventListener('click', () => { adminStatusFilter = 'ALL'; renderAdminDashboard(); });
+
+  document.getElementById('adminDateFilter').value = adminDateFilter;
+
+  let list = posts.slice().sort((a,b) => new Date(b.created_at) - new Date(a.created_at));
+
+  if(adminStatusFilter !== 'ALL'){
+    list = list.filter(p => p.status === adminStatusFilter);
+  }
+  if(adminDateFilter){
+    list = list.filter(p => dateKey(p.created_at) === adminDateFilter);
+  }
+  if(adminSearchTerm){
+    list = list.filter(p =>
+      p.topic.toLowerCase().includes(adminSearchTerm) ||
+      p.district.toLowerCase().includes(adminSearchTerm) ||
+      p.division.toLowerCase().includes(adminSearchTerm) ||
+      p.upazila.toLowerCase().includes(adminSearchTerm) ||
+      p.thana.toLowerCase().includes(adminSearchTerm) ||
+      (p.complaint_number || '').toLowerCase().includes(adminSearchTerm)
+    );
+  }
+
+  const tbody = document.getElementById('adminTableBody');
+  if(list.length === 0){
+    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--ink-soft);padding:20px;">No complaints found.</td></tr>`;
+    return;
+  }
+  tbody.innerHTML = list.map(p => `
+    <tr>
+      <td style="white-space:nowrap;"><strong>${p.complaint_number || ''}</strong></td>
+      <td style="white-space:nowrap;">${dateLabel(p.created_at)}</td>
+      <td><strong>${escapeHtml(p.topic)}</strong></td>
+      <td>${p.division}<br>${p.district}<br>${p.upazila}<br>${p.thana}</td>
+      <td style="max-width:260px;">${escapeHtml(p.details).slice(0,180)}${p.details.length>180?'…':''}</td>
+      <td>👍${p.votes_true} 👎${p.votes_false} ✅${p.votes_solved} ⏳${p.votes_unsolved}</td>
+      <td>${STATUS_LABELS[p.status].en}</td>
+      <td>
+        <div class="row-actions">
+          <select data-id="${p.id}" class="statusSelect">
+            <option value="pending" ${p.status==='pending'?'selected':''}>Pending</option>
+            <option value="published" ${p.status==='published'?'selected':''}>Published</option>
+            <option value="solved" ${p.status==='solved'?'selected':''}>Solved</option>
+            <option value="dismissed" ${p.status==='dismissed'?'selected':''}>Dismissed</option>
+          </select>
+          <button class="btn-mini danger" data-id="${p.id}" data-action="delete">Delete</button>
+        </div>
+      </td>
+    </tr>
+  `).join('');
+
+  tbody.querySelectorAll('.statusSelect').forEach(sel => {
+    sel.addEventListener('change', async () => {
+      sel.disabled = true;
+      const { error } = await sb.rpc('admin_update_status', {
+        p_id: sel.dataset.id, p_status: sel.value,
+        p_username: adminCreds.username, p_password: adminCreds.password
+      });
+      sel.disabled = false;
+      if(error){ console.error(error); showToast("Could not update status."); return; }
+      await fetchAndRenderAdmin();
+      await fetchPublicPosts();
+      renderFeed();
+    });
+  });
+  tbody.querySelectorAll('[data-action="delete"]').forEach(btn => {
+    btn.addEventListener('click', async () => {
+      if(!confirm('Delete this complaint permanently?')) return;
+      btn.disabled = true;
+      const { error } = await sb.rpc('admin_delete_complaint', {
+        p_id: btn.dataset.id,
+        p_username: adminCreds.username, p_password: adminCreds.password
+      });
+      if(error){ console.error(error); showToast("Could not delete complaint."); btn.disabled = false; return; }
+      await fetchAndRenderAdmin();
+      await fetchPublicPosts();
+      renderFeed();
+    });
+  });
+}
+
+/* ============ Admin accounts management ============ */
+async function renderAdminAccountList(){
+  const sel = document.getElementById('resetAdminSelect');
+  const { data, error } = await sb.rpc('admin_list_usernames', {
+    p_username: adminCreds.username, p_password: adminCreds.password
+  });
+  if(error){ console.error(error); return; }
+  sel.innerHTML = (data || []).map(u => `<option value="${u}">${u}</option>`).join('');
+}
+
+document.getElementById('addAdminBtn').addEventListener('click', async () => {
+  const u = document.getElementById('newAdminUser').value.trim();
+  const p = document.getElementById('newAdminPass').value;
+  const errEl = document.getElementById('addAdminErr');
+  const okEl = document.getElementById('addAdminOk');
+  errEl.style.display = 'none'; okEl.style.display = 'none';
+  if(!u || !p) return;
+
+  const { error } = await sb.rpc('admin_add_admin', {
+    p_new_username: u, p_new_password: p,
+    p_username: adminCreds.username, p_password: adminCreds.password
+  });
+  if(error){
+    errEl.textContent = error.message.includes('already exists') ? 'Username already exists.' : 'Could not add admin.';
+    errEl.style.display = 'block';
+    return;
+  }
+  document.getElementById('newAdminUser').value = '';
+  document.getElementById('newAdminPass').value = '';
+  okEl.style.display = 'block';
+  renderAdminAccountList();
+});
+
+document.getElementById('resetAdminBtn').addEventListener('click', async () => {
+  const u = document.getElementById('resetAdminSelect').value;
+  const newPass = document.getElementById('resetAdminPass').value;
+  if(!newPass || !u) return;
+
+  const { error } = await sb.rpc('admin_reset_password', {
+    p_target_username: u, p_new_password: newPass,
+    p_username: adminCreds.username, p_password: adminCreds.password
+  });
+  if(error){ console.error(error); showToast("Could not reset password."); return; }
+
+  document.getElementById('resetAdminPass').value = '';
+  // If the admin reset their OWN password, update the in-memory creds so they stay logged in.
+  if(u === adminCreds.username) adminCreds.password = newPass;
+  const okEl = document.getElementById('resetAdminOk');
+  okEl.style.display = 'block';
+  setTimeout(() => okEl.style.display = 'none', 2500);
+});
+
+/* ============ Init ============ */
+renderAll();
+</script>
+</body>
+</html>
