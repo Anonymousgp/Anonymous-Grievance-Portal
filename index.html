@@ -97,6 +97,24 @@
   .district-list button:hover{background:#f0ede1;}
   .district-list button.active{background:var(--green); color:#fff;}
 
+  /* Complaint panel (full width, top of page) */
+  .complaint-panel{margin-bottom:18px;}
+  .form-grid{display:grid;grid-template-columns:1fr 1fr;gap:0 16px;}
+  @media (max-width:600px){.form-grid{grid-template-columns:1fr;}}
+
+  /* Collapsible district filter */
+  .district-details summary{
+    cursor:pointer; font-weight:600; font-size:15px; list-style:none; padding:2px 0;
+    display:flex; align-items:center; justify-content:space-between;
+  }
+  .district-details summary::-webkit-details-marker{display:none;}
+  .district-details summary::after{
+    content:"▾"; color:var(--ink-soft); font-size:13px; margin-left:8px; transition:transform .15s;
+  }
+  .district-details[open] summary::after{transform:rotate(180deg);}
+  .district-details summary .bn-sub{display:block;font-size:12px;font-weight:500;color:var(--ink-soft);margin-top:1px;}
+  .district-details .district-list{margin-top:12px;}
+
   /* Search */
   .search-row{display:flex; gap:8px;}
   .search-row input{
@@ -153,6 +171,20 @@
 
   .empty-state{padding:40px 20px;text-align:center;color:var(--ink-soft);}
   .empty-state .en{font-size:15px;font-weight:600;color:var(--ink);}
+
+  /* Pagination */
+  .pagination-bar{
+    display:flex; align-items:center; justify-content:center; gap:6px; flex-wrap:wrap;
+    margin-top:20px; padding-top:6px;
+  }
+  .page-btn{
+    border:1px solid var(--line); background:#fbfaf6; padding:7px 12px;border-radius:var(--radius);
+    font-size:13px; font-weight:600; color:var(--ink); min-width:38px; text-align:center;
+  }
+  .page-btn:hover:not(:disabled){border-color:var(--green);}
+  .page-btn.active{background:var(--green-deep); color:#fff; border-color:var(--green-deep);}
+  .page-btn:disabled{opacity:.4; cursor:not-allowed;}
+  .page-ellipsis{padding:7px 4px;color:var(--ink-soft);font-size:13px;}
 
   /* Form */
   .field{margin-bottom:14px;}
@@ -257,54 +289,58 @@
 </div>
 
 <div class="wrap">
+
+  <!-- SUBMIT COMPLAINT — full width, always first, on both mobile and desktop -->
+  <div class="panel complaint-panel">
+    <h3>Submit a Complaint<span class="bn-sub">অভিযোগ জমা দিন</span></h3>
+    <form id="complaintForm">
+      <div class="form-grid">
+        <div class="field">
+          <label>Division <span class="bn-sub bn">বিভাগ</span></label>
+          <select id="fDivision" required></select>
+        </div>
+        <div class="field">
+          <label>District <span class="bn-sub bn">জেলা</span></label>
+          <select id="fDistrict" required disabled><option value="">Select division first</option></select>
+        </div>
+        <div class="field">
+          <label>Upazila <span class="bn-sub bn">উপজেলা</span></label>
+          <select id="fUpazila" required disabled><option value="">Select district first</option></select>
+        </div>
+        <div class="field" id="upazilaOtherWrap" style="display:none;">
+          <label>Enter Upazila name <span class="bn-sub bn">উপজেলার নাম লিখুন</span></label>
+          <input type="text" id="fUpazilaOther">
+        </div>
+        <div class="field">
+          <label>Thana <span class="bn-sub bn">থানা</span></label>
+          <select id="fThana" required disabled><option value="">Select district first</option></select>
+        </div>
+        <div class="field" id="thanaOtherWrap" style="display:none;">
+          <label>Enter Thana name <span class="bn-sub bn">থানার নাম লিখুন</span></label>
+          <input type="text" id="fThanaOther">
+        </div>
+      </div>
+      <div class="field">
+        <label>Topic <span class="bn-sub bn">বিষয়</span></label>
+        <input type="text" id="fTopic" maxlength="120" placeholder="Short title of the issue" required>
+      </div>
+      <div class="field">
+        <label>Details <span class="bn-sub bn">বিস্তারিত বিবরণ</span></label>
+        <textarea id="fDetails" maxlength="2000" placeholder="Describe the issue clearly. Do not include any names or contact numbers." required></textarea>
+      </div>
+      <button type="submit" class="btn-primary">Submit Anonymously <span class="bn">/ বেনামে জমা দিন</span></button>
+      <div class="form-note">Your complaint will be reviewed by an admin before appearing publicly. No identifying data is stored.<br><span class="bn">যাচাইয়ের পর অভিযোগটি প্রকাশ্যে প্রকাশ করা হবে। কোনো পরিচয়মূলক তথ্য সংরক্ষণ করা হয় না।</span></div>
+    </form>
+  </div>
+
   <div class="layout">
 
-    <!-- SIDEBAR -->
+    <!-- SIDEBAR: district filter (collapsible on mobile, open sidebar on desktop) -->
     <div class="sidebar">
-      <div class="panel">
-        <h3>Filter by District<span class="bn-sub">জেলা অনুযায়ী ফিল্টার করুন</span></h3>
+      <details class="panel district-details" id="districtDetails" open>
+        <summary>Filter by District<span class="bn-sub">জেলা অনুযায়ী ফিল্টার করুন</span></summary>
         <ul class="district-list" id="districtFilterList"></ul>
-      </div>
-
-      <div class="panel">
-        <h3>Submit a Complaint<span class="bn-sub">অভিযোগ জমা দিন</span></h3>
-        <form id="complaintForm">
-          <div class="field">
-            <label>Division <span class="bn-sub bn">বিভাগ</span></label>
-            <select id="fDivision" required></select>
-          </div>
-          <div class="field">
-            <label>District <span class="bn-sub bn">জেলা</span></label>
-            <select id="fDistrict" required disabled><option value="">Select division first</option></select>
-          </div>
-          <div class="field">
-            <label>Upazila <span class="bn-sub bn">উপজেলা</span></label>
-            <select id="fUpazila" required disabled><option value="">Select district first</option></select>
-          </div>
-          <div class="field" id="upazilaOtherWrap" style="display:none;">
-            <label>Enter Upazila name <span class="bn-sub bn">উপজেলার নাম লিখুন</span></label>
-            <input type="text" id="fUpazilaOther">
-          </div>
-          <div class="field">
-            <label>Thana <span class="bn-sub bn">থানা</span></label>
-            <select id="fThana" required disabled><option value="">Select district first</option></select>
-          </div>
-          <div class="field" id="thanaOtherWrap" style="display:none;">
-            <label>Enter Thana name <span class="bn-sub bn">থানার নাম লিখুন</span></label>
-            <input type="text" id="fThanaOther">
-          </div>
-          <div class="field">
-            <label>Topic <span class="bn-sub bn">বিষয়</span></label>
-            <input type="text" id="fTopic" maxlength="120" placeholder="Short title of the issue" required>
-          </div>
-          <div class="field">
-            <label>Details <span class="bn-sub bn">বিস্তারিত বিবরণ</span></label>
-            <textarea id="fDetails" maxlength="2000" placeholder="Describe the issue clearly. Do not include any names or contact numbers." required></textarea>
-          </div>
-          <button type="submit" class="btn-primary">Submit Anonymously <span class="bn">/ বেনামে জমা দিন</span></button>
-          <div class="form-note">Your complaint will be reviewed by an admin before appearing publicly. No identifying data is stored.<br><span class="bn">যাচাইয়ের পর অভিযোগটি প্রকাশ্যে প্রকাশ করা হবে। কোনো পরিচয়মূলক তথ্য সংরক্ষণ করা হয় না।</span></div>
-        </form>
-      </div>
+      </details>
     </div>
 
     <!-- MAIN FEED -->
@@ -326,6 +362,7 @@
       </div>
 
       <div id="feed"></div>
+      <div id="pagination" class="pagination-bar"></div>
     </div>
   </div>
 </div>
@@ -594,25 +631,43 @@ function renderDistrictFilter(){
   list.querySelectorAll('button').forEach(btn => {
     btn.addEventListener('click', () => {
       currentDistrictFilter = btn.dataset.d;
+      currentPage = 1;
       renderFeed();
     });
   });
 }
 
+// On desktop, keep the district filter open like a normal sidebar.
+// On mobile, keep it collapsed by default so it doesn't dominate the top of the page.
+function syncDistrictDetailsOpenState(){
+  const d = document.getElementById('districtDetails');
+  if(!d) return;
+  d.open = window.matchMedia('(min-width: 861px)').matches;
+}
+syncDistrictDetailsOpenState();
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(syncDistrictDetailsOpenState, 200);
+});
+
 document.getElementById('searchBtn').addEventListener('click', () => {
   currentSearch = document.getElementById('searchInput').value.trim().toLowerCase();
+  currentPage = 1;
   renderFeed();
 });
 document.getElementById('searchInput').addEventListener('keydown', (e) => {
-  if(e.key === 'Enter'){ currentSearch = e.target.value.trim().toLowerCase(); renderFeed(); }
+  if(e.key === 'Enter'){ currentSearch = e.target.value.trim().toLowerCase(); currentPage = 1; renderFeed(); }
 });
 document.getElementById('dateFilter').addEventListener('change', (e) => {
   currentDateFilter = e.target.value; // "" if cleared
+  currentPage = 1;
   renderFeed();
 });
 document.getElementById('dateFilterClear').addEventListener('click', () => {
   currentDateFilter = "";
   document.getElementById('dateFilter').value = "";
+  currentPage = 1;
   renderFeed();
 });
 
@@ -634,6 +689,79 @@ async function fetchPublicPosts(){
   publicPosts = data || [];
 }
 
+/* ============ Feed ranking algorithm ============
+   Goal, in the user's own words:
+   - Posts with lots of "True" votes are burning issues -> push to top.
+   - Brand new posts need visibility too, or they'll never be seen -> recency boost.
+   - Old posts that are STILL unresolved shouldn't get buried under a flood of
+     newer posts -> a slowly-growing "aging alarm" bonus kicks in after ~2 weeks.
+   - "Solved" and heavily "False"-voted posts matter less -> lower tier / lower score.
+   Posts are first split into tiers by admin status (published > solved > dismissed),
+   then ranked by score within each tier — so a dismissed post can never outrank
+   an active one, no matter how many votes it has.
+============================================================ */
+const TIER_ORDER = { published: 0, solved: 1, dismissed: 2 };
+
+function computeFeedScore(p){
+  const daysOld = (Date.now() - new Date(p.created_at).getTime()) / 86400000;
+
+  const voteScore = (p.votes_true * 3) - (p.votes_false * 1.5) + (p.votes_unsolved * 1) - (p.votes_solved * 1);
+  const recencyBoost = 20 / (1 + daysOld / 3);                      // strong when new, fades over the first ~2 weeks
+  const agingAlarm = daysOld > 14 ? Math.min(25, (daysOld - 14) * 0.6) : 0; // slowly rescues old, still-open posts
+
+  return voteScore + recencyBoost + agingAlarm;
+}
+
+function sortFeed(posts){
+  return posts.slice().sort((a, b) => {
+    const tierDiff = (TIER_ORDER[a.status] ?? 9) - (TIER_ORDER[b.status] ?? 9);
+    if(tierDiff !== 0) return tierDiff;
+    return computeFeedScore(b) - computeFeedScore(a);
+  });
+}
+
+/* ============ Pagination ============ */
+const POSTS_PER_PAGE = 10;
+let currentPage = 1;
+
+function renderPagination(totalItems){
+  const bar = document.getElementById('pagination');
+  const totalPages = Math.max(1, Math.ceil(totalItems / POSTS_PER_PAGE));
+  if(currentPage > totalPages) currentPage = totalPages;
+  if(currentPage < 1) currentPage = 1;
+
+  if(totalPages <= 1){ bar.innerHTML = ''; return; }
+
+  const btn = (label, page, opts = {}) =>
+    `<button class="page-btn ${opts.active?'active':''}" data-page="${page}" ${opts.disabled?'disabled':''}>${label}</button>`;
+
+  let html = '';
+  html += btn('« First', 1, { disabled: currentPage === 1 });
+  html += btn('‹ Prev', currentPage - 1, { disabled: currentPage === 1 });
+
+  const windowSize = 2;
+  const start = Math.max(1, currentPage - windowSize);
+  const end = Math.min(totalPages, currentPage + windowSize);
+
+  if(start > 1) html += `<span class="page-ellipsis">…</span>`;
+  for(let i = start; i <= end; i++){
+    html += btn(i, i, { active: i === currentPage });
+  }
+  if(end < totalPages) html += `<span class="page-ellipsis">…</span>`;
+
+  html += btn('Next ›', currentPage + 1, { disabled: currentPage === totalPages });
+  html += btn('Last »', totalPages, { disabled: currentPage === totalPages });
+
+  bar.innerHTML = html;
+  bar.querySelectorAll('.page-btn:not(:disabled)').forEach(b => {
+    b.addEventListener('click', () => {
+      currentPage = parseInt(b.dataset.page, 10);
+      renderFeed();
+      document.getElementById('feed').scrollIntoView({ behavior: 'smooth', block: 'start' });
+    });
+  });
+}
+
 function renderFeed(){
   document.getElementById('dateFilter').value = currentDateFilter;
 
@@ -652,7 +780,7 @@ function renderFeed(){
       (p.complaint_number || '').toLowerCase().includes(currentSearch)
     );
   }
-  filtered.sort((a,b) => totalVotes(b) - totalVotes(a) || new Date(b.created_at) - new Date(a.created_at));
+  filtered = sortFeed(filtered);
 
   const feed = document.getElementById('feed');
   const chip = document.getElementById('activeFilterChip');
@@ -663,7 +791,7 @@ function renderFeed(){
     </span>` : '';
   const clearBtn = document.getElementById('clearFilters');
   if(clearBtn) clearBtn.addEventListener('click', () => {
-    currentDistrictFilter='ALL'; currentSearch=''; currentDateFilter='';
+    currentDistrictFilter='ALL'; currentSearch=''; currentDateFilter=''; currentPage = 1;
     document.getElementById('searchInput').value='';
     renderFeed();
   });
@@ -673,11 +801,16 @@ function renderFeed(){
       <div class="en">No complaints to show yet.</div>
       <div class="bn">এখনো কোনো অভিযোগ প্রকাশিত হয়নি।</div>
     </div>`;
+    document.getElementById('pagination').innerHTML = '';
     return;
   }
 
+  const totalPages = Math.max(1, Math.ceil(filtered.length / POSTS_PER_PAGE));
+  if(currentPage > totalPages) currentPage = totalPages;
+  const pageItems = filtered.slice((currentPage - 1) * POSTS_PER_PAGE, currentPage * POSTS_PER_PAGE);
+
   const voted = loadVoted();
-  feed.innerHTML = filtered.map(p => {
+  feed.innerHTML = pageItems.map(p => {
     const st = STATUS_LABELS[p.status];
     const v = voted[p.id] || {};
     const date = dateLabel(p.created_at);
@@ -719,6 +852,8 @@ function renderFeed(){
       renderFeed();
     });
   });
+
+  renderPagination(filtered.length);
 }
 
 async function renderAll(){
