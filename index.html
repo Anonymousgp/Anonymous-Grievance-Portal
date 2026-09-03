@@ -191,10 +191,12 @@
   .field{margin-bottom:14px;}
   .field label{display:block;font-size:13px;font-weight:600;margin-bottom:5px;}
   .field label .bn-sub{font-weight:500;color:var(--ink-soft);font-size:12px;margin-left:4px;}
-  .field select, .field input[type=text], .field textarea{
+  .field select, .field input[type=text], .field input[type=password], .field textarea{
     width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:var(--radius);
     font-family:inherit; font-size:14px; background:#fdfcf9;
+    box-sizing:border-box; height:40px;
   }
+  .field textarea{height:auto;}
   .field textarea{resize:vertical;min-height:100px;}
   .grid2{display:grid;grid-template-columns:1fr 1fr;gap:12px;}
   @media (max-width:520px){.grid2{grid-template-columns:1fr;}}
@@ -216,9 +218,8 @@
   footer{border-top:1px solid var(--line); margin-top:30px; padding:20px; text-align:center; color:var(--ink-soft); font-size:12.5px;}
   .admin-dot{
     display:inline-block; width:7px;height:7px; border-radius:50%; background:var(--line); border:none;
-    margin-left:8px; cursor:pointer; vertical-align:middle; opacity:.7; transition:opacity .15s, transform .15s;
+    margin-left:8px; cursor:default; padding:0; outline:none;
   }
-  .admin-dot:hover{opacity:1; transform:scale(1.4); background:var(--gold);}
 
   /* Modal */
   .modal-overlay{
@@ -363,7 +364,7 @@
     <div>
       <div class="panel">
         <div class="search-row">
-          <input type="text" id="searchInput" placeholder="Search by topic, complaint no., or location... / বিষয়, অভিযোগ নম্বর বা এলাকা দিয়ে খুঁজুন...">
+          <input type="text" id="searchInput" name="grievance-search-query" autocomplete="off" data-lpignore="true" data-1p-ignore data-bwignore placeholder="Search by topic, complaint no., or location... / বিষয়, অভিযোগ নম্বর বা এলাকা দিয়ে খুঁজুন...">
           <button id="searchBtn">Search</button>
         </div>
       </div>
@@ -439,7 +440,7 @@
     <div id="tabComplaints">
       <div class="panel" style="margin-bottom:14px;">
         <div class="search-row">
-          <input type="text" id="adminSearch" placeholder="Search by topic, complaint no., or location...">
+          <input type="text" id="adminSearch" name="admin-complaint-search" autocomplete="off" data-lpignore="true" data-1p-ignore data-bwignore placeholder="Search by topic, complaint no., or location...">
           <label for="adminDateFilter" style="font-size:13px;color:var(--ink-soft);align-self:center;white-space:nowrap;">Date:</label>
           <input type="date" id="adminDateFilter">
           <button class="btn-mini" id="adminDateFilterClear">All Dates</button>
@@ -500,9 +501,92 @@ const BD = {
   "Rangpur": ["Dinajpur","Gaibandha","Kurigram","Lalmonirhat","Nilphamari","Panchagarh","Rangpur","Thakurgaon"],
   "Sylhet": ["Habiganj","Moulvibazar","Sunamganj","Sylhet"]
 };
-// Note: Bangladesh has ~495 upazilas and thousands of unions/thanas — too many to hand-list here.
-// Each district gets a "Sadar" default plus an "Other" option where the user can type the exact upazila/thana.
+// Note: Bangladesh has ~495 upazilas — the list below is a real, complete dataset (all 64 districts).
+// Thana (police jurisdiction) reuses the same list, since outside metropolitan city areas a thana
+// and its upazila share the same name and boundary. An "Other" option lets someone in a metropolitan
+// area (e.g. Dhaka/Chattogram city) type their specific police thana name if it isn't in this list.
+const BD_UPAZILAS = {
+  "Barguna": ["Amtali", "Bamna", "Barguna Sadar", "Betagi", "Pathorghata", "Taltali"],
+  "Barishal": ["Agailjhara", "Babuganj", "Bakerganj", "Banaripara", "Barishal Sadar", "Gournadi", "Hizla", "Mehendiganj", "Muladi", "Wazirpur"],
+  "Bhola": ["Bhola Sadar", "Borhanuddin", "Charfesson", "Doulatkhan", "Lalmohan", "Monpura", "Tazumuddin"],
+  "Jhalokati": ["Jhalokati Sadar", "Kathalia", "Nalchity", "Rajapur"],
+  "Patuakhali": ["Bauphal", "Dashmina", "Dumki", "Galachipa", "Kalapara", "Mirzaganj", "Patuakhali Sadar", "Rangabali"],
+  "Pirojpur": ["Bhandaria", "Kawkhali", "Mathbaria", "Nazirpur", "Nesarabad", "Pirojpur Sadar", "Zianagar"],
+  "Bandarban": ["Alikadam", "Bandarban Sadar", "Lama", "Naikhongchhari", "Rowangchhari", "Ruma", "Thanchi"],
+  "Brahmanbaria": ["Akhaura", "Ashuganj", "Bancharampur", "Bijoynagar", "Brahmanbaria Sadar", "Kasba", "Nabinagar", "Nasirnagar", "Sarail"],
+  "Chandpur": ["Chandpur Sadar", "Faridgonj", "Haimchar", "Hajiganj", "Kachua", "Matlab North", "Matlab South", "Shahrasti"],
+  "Chattogram": ["Anwara", "Banshkhali", "Boalkhali", "Chandanaish", "Fatikchhari", "Hathazari", "Karnafuli", "Lohagara", "Mirsharai", "Patiya", "Rangunia", "Raozan", "Sandwip", "Satkania", "Sitakunda"],
+  "Cumilla": ["Barura", "Brahmanpara", "Burichang", "Chandina", "Chauddagram", "Cumilla Sadar", "Daudkandi", "Debidwar", "Homna", "Laksam", "Lalmai", "Meghna", "Monohargonj", "Muradnagar", "Nangalkot", "Cumilla Sadar Dakshin", "Titas"],
+  "Cox's Bazar": ["Chakaria", "Cox's Bazar Sadar", "Eidgaon", "Kutubdia", "Moheshkhali", "Pekua", "Ramu", "Teknaf", "Ukhiya"],
+  "Feni": ["Chhagalnaiya", "Daganbhuiyan", "Feni Sadar", "Fulgazi", "Parshuram", "Sonagazi"],
+  "Khagrachhari": ["Dighinala", "Guimara", "Khagrachhari Sadar", "Laxmichhari", "Manikchari", "Matiranga", "Mohalchari", "Panchari", "Ramgarh"],
+  "Lakshmipur": ["Kamalnagar", "Lakshmipur Sadar", "Raipur", "Ramganj", "Ramgati"],
+  "Noakhali": ["Begumganj", "Chatkhil", "Companiganj", "Hatia", "Kabirhat", "Noakhali Sadar", "Senbug", "Sonaimori", "Subarnachar"],
+  "Rangamati": ["Baghaichari", "Barkal", "Belaichari", "Juraichari", "Kaptai", "Kawkhali", "Langadu", "Naniarchar", "Rajasthali", "Rangamati Sadar"],
+  "Dhaka": ["Dhamrai", "Dohar", "Keraniganj", "Nawabganj", "Savar"],
+  "Faridpur": ["Alfadanga", "Bhanga", "Boalmari", "Charbhadrasan", "Faridpur Sadar", "Madhukhali", "Nagarkanda", "Sadarpur", "Saltha"],
+  "Gazipur": ["Gazipur Sadar", "Kaliakair", "Kaliganj", "Kapasia", "Sreepur"],
+  "Gopalganj": ["Gopalganj Sadar", "Kashiani", "Kotalipara", "Muksudpur", "Tungipara"],
+  "Kishoreganj": ["Austagram", "Bajitpur", "Bhairab", "Hossainpur", "Itna", "Karimgonj", "Katiadi", "Kishoreganj Sadar", "Kuliarchar", "Mithamoin", "Nikli", "Pakundia", "Tarail"],
+  "Madaripur": ["Dasar", "Kalkini", "Madaripur Sadar", "Rajoir", "Shibchar"],
+  "Manikganj": ["Doulatpur", "Gior", "Harirampur", "Manikganj Sadar", "Saturia", "Shibaloy", "Singiar"],
+  "Munshiganj": ["Gajaria", "Louhajanj", "Munshiganj Sadar", "Sirajdikhan", "Sreenagar", "Tongibari"],
+  "Narayanganj": ["Araihazar", "Bandar", "Narayanganj Sadar", "Rupganj", "Sonargaon"],
+  "Narsingdi": ["Belabo", "Monohardi", "Narsingdi Sadar", "Palash", "Raipura", "Shibpur"],
+  "Rajbari": ["Baliakandi", "Goalanda", "Kalukhali", "Pangsa", "Rajbari Sadar"],
+  "Shariatpur": ["Bhedarganj", "Damudya", "Gosairhat", "Naria", "Shariatpur Sadar", "Zajira"],
+  "Tangail": ["Basail", "Bhuapur", "Delduar", "Dhanbari", "Ghatail", "Gopalpur", "Kalihati", "Madhupur", "Mirzapur", "Nagarpur", "Sakhipur", "Tangail Sadar"],
+  "Bagerhat": ["Bagerhat Sadar", "Chitalmari", "Fakirhat", "Kachua", "Mollahat", "Mongla", "Morrelganj", "Rampal", "Sarankhola"],
+  "Chuadanga": ["Alamdanga", "Chuadanga Sadar", "Damurhuda", "Jibannagar"],
+  "Jashore": ["Abhaynagar", "Bagherpara", "Chougachha", "Jashore Sadar", "Jhikargacha", "Keshabpur", "Manirampur", "Sharsha"],
+  "Jhenaidah": ["Harinakundu", "Jhenaidah Sadar", "Kaliganj", "Kotchandpur", "Moheshpur", "Shailkupa"],
+  "Khulna": ["Botiaghata", "Dakop", "Digholia", "Dumuria", "Fultola", "Koyra", "Paikgasa", "Rupsha", "Terokhada"],
+  "Kushtia": ["Bheramara", "Daulatpur", "Khoksa", "Kumarkhali", "Kushtia Sadar", "Mirpur"],
+  "Magura": ["Magura Sadar", "Mohammadpur", "Shalikha", "Sreepur"],
+  "Meherpur": ["Gangni", "Meherpur Sadar", "Mujibnagar"],
+  "Narail": ["Kalia", "Lohagara", "Narail Sadar"],
+  "Satkhira": ["Assasuni", "Debhata", "Kalaroa", "Kaliganj", "Satkhira Sadar", "Shyamnagar", "Tala"],
+  "Jamalpur": ["Bokshiganj", "Dewangonj", "Islampur", "Jamalpur Sadar", "Madarganj", "Melandah", "Sarishabari"],
+  "Mymensingh": ["Bhaluka", "Dhobaura", "Fulbaria", "Gafargaon", "Gouripur", "Haluaghat", "Iswarganj", "Muktagacha", "Mymensingh Sadar", "Nandail", "Phulpur", "Tarakanda", "Trishal"],
+  "Netrokona": ["Atpara", "Barhatta", "Durgapur", "Kalmakanda", "Kendua", "Khaliajuri", "Madan", "Mohongonj", "Netrokona Sadar", "Purbadhala"],
+  "Sherpur": ["Jhenaigati", "Nalitabari", "Nokla", "Sherpur Sadar", "Sreebordi"],
+  "Bogura": ["Adamdighi", "Bogura Sadar", "Dhunot", "Dupchanchia", "Gabtali", "Kahaloo", "Nondigram", "Shajahanpur", "Shariakandi", "Sherpur", "Shibganj", "Sonatala"],
+  "Chapainawabganj": ["Bholahat", "Chapainawabganj Sadar", "Gomostapur", "Nachol", "Shibganj"],
+  "Joypurhat": ["Akkelpur", "Joypurhat Sadar", "Kalai", "Khetlal", "Panchbibi"],
+  "Naogaon": ["Atrai", "Badalgachi", "Dhamoirhat", "Manda", "Mohadevpur", "Naogaon Sadar", "Niamatpur", "Patnitala", "Porsha", "Raninagar", "Sapahar"],
+  "Natore": ["Bagatipara", "Baraigram", "Gurudaspur", "Lalpur", "Naldanga", "Natore Sadar", "Singra"],
+  "Pabna": ["Atghoria", "Bera", "Bhangura", "Chatmohar", "Faridpur", "Ishurdi", "Pabna Sadar", "Santhia", "Sujanagar"],
+  "Rajshahi": ["Bagha", "Bagmara", "Charghat", "Durgapur", "Godagari", "Mohonpur", "Paba", "Puthia", "Tanore"],
+  "Sirajganj": ["Belkuchi", "Chauhali", "Kamarkhand", "Kazipur", "Raigonj", "Shahjadpur", "Sirajganj Sadar", "Tarash", "Ullapara"],
+  "Dinajpur": ["Birampur", "Birganj", "Birol", "Bochaganj", "Chirirbandar", "Dinajpur Sadar", "Fulbari", "Ghoraghat", "Hakimpur", "Kaharol", "Khansama", "Nawabganj", "Parbatipur"],
+  "Gaibandha": ["Gaibandha Sadar", "Gobindaganj", "Palashbari", "Phulchari", "Sadullapur", "Saghata", "Sundarganj"],
+  "Kurigram": ["Bhurungamari", "Charrajibpur", "Chilmari", "Kurigram Sadar", "Nageshwari", "Phulbari", "Rajarhat", "Rowmari", "Ulipur"],
+  "Lalmonirhat": ["Aditmari", "Hatibandha", "Kaliganj", "Lalmonirhat Sadar", "Patgram"],
+  "Nilphamari": ["Dimla", "Domar", "Jaldhaka", "Kishorganj", "Nilphamari Sadar", "Syedpur"],
+  "Panchagarh": ["Atwari", "Boda", "Debiganj", "Panchagarh Sadar", "Tetulia"],
+  "Rangpur": ["Badargonj", "Gangachara", "Kaunia", "Mithapukur", "Pirgacha", "Pirgonj", "Rangpur Sadar", "Taragonj"],
+  "Thakurgaon": ["Baliadangi", "Haripur", "Pirganj", "Ranisankail", "Thakurgaon Sadar"],
+  "Habiganj": ["Ajmiriganj", "Bahubal", "Baniachong", "Chunarughat", "Habiganj Sadar", "Lakhai", "Madhabpur", "Nabiganj"],
+  "Moulvibazar": ["Barlekha", "Juri", "Kamolganj", "Kulaura", "Moulvibazar Sadar", "Rajnagar", "Sreemangal"],
+  "Sunamganj": ["Bishwambarpur", "Chhatak", "Derai", "Dharmapasha", "Dowarabazar", "Jagannathpur", "Jamalganj", "Madhyanagar", "Shalla", "South Sunamganj", "Sunamganj Sadar", "Tahirpur"],
+  "Sylhet": ["Balaganj", "Beanibazar", "Bishwanath", "Companiganj", "Dakshin Surma", "Fenchuganj", "Golapganj", "Gowainghat", "Jaintiapur", "Kanaighat", "Osmaninagar", "Sylhet Sadar", "Zakiganj"],
+};
 const OTHER = "__other__";
+
+// Real police-thana lists for Bangladesh's 8 established Metropolitan Police cities, where thana
+// boundaries diverge from upazila boundaries (source: DMP/CMP/KMP/RMP/SMP/BMP/RPMP/GMP official sites
+// and Wikipedia). These are ADDED on top of the district's normal upazila-based thana list, since
+// they only cover the city itself, not the whole district.
+const METRO_THANAS = {
+  "Dhaka": ["Adabor", "Badda", "Banani", "Bangshal", "Bimanbandar", "Bhashantek", "Cantonment", "Chawkbazar", "Dakshinkhan", "Darus-Salam", "Demra", "Dhanmondi", "Gandaria", "Gulshan", "Hazaribag", "Jatrabari", "Kadamtoli", "Kafrul", "Kalabagan", "Kamrangirchar", "Khilgaon", "Khilkhet", "Kotwali", "Lalbagh", "Mirpur Model", "Mohammadpur", "Motijheel", "Mugda", "New Market", "Pallabi", "Paltan Model", "Ramna Model", "Rampura", "Rupnagar", "Sabujbagh", "Shah Ali", "Shahbagh", "Shahjahanpur", "Sher-e-Bangla Nagar", "Shyampur", "Sutrapur", "Tejgaon", "Tejgaon Industrial Area", "Turag", "Uttara East", "Uttara West", "Uttarkhan", "Vatara", "Wari"],
+  "Chattogram": ["Kotwali", "Chandgaon", "Panchlaish", "Double Mooring", "Pahartali", "Bandar", "Bayazid Bostami", "Halishahar", "Karnaphuli", "Patenga", "Bakalia", "Akbarshah", "Sadarghat", "EPZ", "Chawkbazar", "Khulshi"],
+  "Khulna": ["Khulna Sadar (Kotwali)", "Sonadanga", "Khalishpur", "Daulatpur", "Khan Jahan Ali", "Labanchora", "Harintana", "Aranghata"],
+  "Rajshahi": ["Boalia", "Rajpara", "Motihar", "Shah Makhdum", "Chandrima", "Kasiadanga", "Katakhali", "Belpukur", "Airport (Rajshahi)", "Karnahar", "Damkura", "Paba"],
+  "Sylhet": ["Kotwali Model", "Jalalabad", "Airport (Sylhet)", "South Surma", "Moglabazar", "Shahporan"],
+  "Barishal": ["Kotwali (Barishal)", "Airport (Barishal)", "Kaunia", "Bandar (Barishal)"],
+  "Rangpur": ["Kotowali (Rangpur)", "Tajhat", "Mahigonj", "Haragach", "Porshuram", "Hazirhat"],
+  "Gazipur": ["Joydebpur", "Chandana Chowrasta (Bashan)", "Konabari", "Kashimpur", "Gacha", "Tongi East", "Tongi West", "Pubail"],
+};
 
 /* ============ Local-only helpers (no personal data — just UI state) ============ */
 const LS_VOTED = "gp_voted_v1"; // which post/vote-type buttons THIS browser has already pressed
@@ -579,8 +663,19 @@ fDistrict.addEventListener('change', () => {
   if(!dist){ resetUpazilaThana(); return; }
   fUpazila.disabled = false;
   fThana.disabled = false;
-  fUpazila.innerHTML = `<option value="">Select / নির্বাচন করুন</option><option value="${dist} Sadar">${dist} Sadar</option><option value="${OTHER}">Other / টাইপ করুন...</option>`;
-  fThana.innerHTML = `<option value="">Select / নির্বাচন করুন</option><option value="${dist} Sadar Thana">${dist} Sadar Thana</option><option value="${OTHER}">Other / টাইপ করুন...</option>`;
+  const upazilaList = BD_UPAZILAS[dist] || [];
+  const upazilaOptions = '<option value="">Select / নির্বাচন করুন</option>' +
+    upazilaList.map(u => `<option value="${u}">${u}</option>`).join('') +
+    `<option value="${OTHER}">Other / টাইপ করুন...</option>`;
+  fUpazila.innerHTML = upazilaOptions;
+
+  // Thana list = the same real upazila-based names (accurate for non-metro areas) PLUS the
+  // district's actual metropolitan police thanas where applicable (e.g. Dhaka, Chattogram city).
+  const thanaSet = [...new Set([...upazilaList, ...(METRO_THANAS[dist] || [])])].sort();
+  fThana.innerHTML = '<option value="">Select / নির্বাচন করুন</option>' +
+    thanaSet.map(t => `<option value="${t}">${t}</option>`).join('') +
+    `<option value="${OTHER}">Other / টাইপ করুন...</option>`;
+
   upazilaOtherWrap.style.display = 'none';
   thanaOtherWrap.style.display = 'none';
 });
