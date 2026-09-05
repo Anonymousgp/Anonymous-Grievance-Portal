@@ -116,6 +116,11 @@
   /* Sidebar */
   .sidebar{position:sticky; top:16px;}
   .district-list{list-style:none;margin:0;padding:0;max-height:360px;overflow-y:auto;}
+  .district-search-box{
+    width:100%;padding:8px 10px;margin-top:10px;border:1px solid var(--line);border-radius:var(--radius);
+    font-family:inherit; font-size:13.5px; background:#fdfcf9; box-sizing:border-box;
+  }
+  .district-list .no-match{padding:10px 6px;font-size:13px;color:var(--ink-soft);}
   .district-list li{border-bottom:1px solid #ece7d9;}
   .district-list button{
     width:100%;text-align:left;background:none;border:none;padding:8px 6px;
@@ -383,6 +388,7 @@
     <div class="sidebar">
       <details class="panel district-details" id="districtDetails" open>
         <summary>Filter by District<span class="bn-sub">জেলা অনুযায়ী ফিল্টার করুন</span></summary>
+        <input type="text" id="districtSearchBox" class="district-search-box" placeholder="Search district... / জেলা খুঁজুন..." autocomplete="off" data-lpignore="true" data-1p-ignore data-bwignore>
         <ul class="district-list" id="districtFilterList"></ul>
       </details>
     </div>
@@ -768,20 +774,40 @@ function showToast(msg){
 }
 
 /* ============ District filter sidebar ============ */
+let districtSearchTerm = '';
+
 function renderDistrictFilter(){
   const list = document.getElementById('districtFilterList');
   const allDistricts = Object.values(BD).flat().sort();
-  let html = `<li><button data-d="ALL" class="${currentDistrictFilter==='ALL'?'active':''}">All Districts <span class="bn">সকল জেলা</span></button></li>`;
-  html += allDistricts.map(d => `<li><button data-d="${d}" class="${currentDistrictFilter===d?'active':''}">${d}</button></li>`).join('');
+  const filtered = districtSearchTerm
+    ? allDistricts.filter(d => d.toLowerCase().includes(districtSearchTerm))
+    : allDistricts;
+
+  let html = '';
+  // Only show "All Districts" when not actively searching, so search results stay focused.
+  if(!districtSearchTerm){
+    html += `<li><button data-d="ALL" class="${currentDistrictFilter==='ALL'?'active':''}">All Districts <span class="bn">সকল জেলা</span></button></li>`;
+  }
+  if(filtered.length === 0){
+    html += `<li class="no-match">No districts match "${escapeHtml(districtSearchTerm)}". <span class="bn">কোনো জেলা পাওয়া যায়নি।</span></li>`;
+  } else {
+    html += filtered.map(d => `<li><button data-d="${d}" class="${currentDistrictFilter===d?'active':''}">${d}</button></li>`).join('');
+  }
   list.innerHTML = html;
   list.querySelectorAll('button').forEach(btn => {
     btn.addEventListener('click', () => {
       currentDistrictFilter = btn.dataset.d;
       currentPage = 1;
       renderFeed();
+      renderDistrictFilter(); // refresh highlight state within the (possibly filtered) list
     });
   });
 }
+
+document.getElementById('districtSearchBox').addEventListener('input', (e) => {
+  districtSearchTerm = e.target.value.trim().toLowerCase();
+  renderDistrictFilter();
+});
 
 // On desktop, keep the district filter open like a normal sidebar.
 // On mobile, keep it collapsed by default so it doesn't dominate the top of the page.
