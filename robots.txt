@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://anonymousgp.github.io/Anonymous-Grievance-Portal/sitemap.xml
