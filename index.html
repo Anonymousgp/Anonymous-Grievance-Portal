@@ -121,6 +121,22 @@
     font-family:inherit; font-size:13.5px; background:#fdfcf9; box-sizing:border-box;
   }
   .district-list .no-match{padding:10px 6px;font-size:13px;color:var(--ink-soft);}
+
+  /* Category pills: used both in the submission form (multi-select toggle) and the feed filter row */
+  .category-pills{display:flex;flex-wrap:wrap;gap:8px;}
+  .category-pill{
+    border:1px solid var(--line); background:#fbfaf6; padding:6px 12px;border-radius:20px;
+    font-size:12.5px; font-weight:600; color:var(--ink);
+  }
+  .category-pill.selected{background:var(--green); border-color:var(--green); color:#fff;}
+  .category-pill-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+  .category-pill-row .category-pill{background:#fff;}
+  .category-pill-row .category-pill.selected{background:var(--green-deep); border-color:var(--green-deep);}
+  .post-category-tag{
+    display:inline-block; font-size:11px; font-weight:600; color:var(--green-deep);
+    background:#eef3ea; border:1px solid #c9dcc4; padding:2px 9px;border-radius:12px;
+    margin:6px 6px 0 0;
+  }
   .district-list li{border-bottom:1px solid #ece7d9;}
   .district-list button{
     width:100%;text-align:left;background:none;border:none;padding:8px 6px;
@@ -374,6 +390,10 @@
         <input type="text" id="fTopic" maxlength="120" placeholder="Short title of the issue" required>
       </div>
       <div class="field">
+        <label>Category <span class="bn-sub bn">বিষয়শ্রেণী</span> — <span style="font-weight:400;color:var(--ink-soft);">select all that apply</span></label>
+        <div class="category-pills" id="categoryPicker"></div>
+      </div>
+      <div class="field">
         <label>Details <span class="bn-sub bn">বিস্তারিত বিবরণ</span></label>
         <textarea id="fDetails" maxlength="2000" placeholder="Describe the issue clearly. Do not include any names or contact numbers." required></textarea>
       </div>
@@ -401,6 +421,8 @@
           <button id="searchBtn">Search</button>
         </div>
       </div>
+
+      <div class="category-pill-row" id="categoryFilterRow"></div>
 
       <div class="feed-controls">
         <div id="activeFilterChip"></div>
@@ -483,7 +505,7 @@
       <div style="overflow-x:auto;">
         <table id="adminTable">
           <thead><tr>
-            <th>Complaint No.</th><th>Date</th><th>Topic</th><th>Location</th><th>Details</th><th>Reactions</th><th>Status</th><th>Actions</th>
+            <th>Complaint No.</th><th>Date</th><th>Topic</th><th>Category</th><th>Location</th><th>Details</th><th>Reactions</th><th>Status</th><th>Actions</th>
           </tr></thead>
           <tbody id="adminTableBody"></tbody>
         </table>
@@ -606,6 +628,44 @@ const BD_UPAZILAS = {
 };
 const OTHER = "__other__";
 
+// Fixed category list — kept in sync with the DB check constraint (see supabase-schema.sql).
+const CATEGORIES = [
+  { key: "Roads & Infrastructure", bn: "রাস্তা ও অবকাঠামো" },
+  { key: "Water Supply", bn: "পানি সরবরাহ" },
+  { key: "Electricity", bn: "বিদ্যুৎ" },
+  { key: "Sanitation & Waste", bn: "পয়ঃনিষ্কাশন ও বর্জ্য" },
+  { key: "Education", bn: "শিক্ষা" },
+  { key: "Healthcare", bn: "স্বাস্থ্যসেবা" },
+  { key: "Corruption & Bribery", bn: "দুর্নীতি ও ঘুষ" },
+  { key: "Law & Order / Police", bn: "আইনশৃঙ্খলা / পুলিশ" },
+  { key: "Public Transport", bn: "গণপরিবহন" },
+  { key: "Environment", bn: "পরিবেশ" },
+  { key: "Other", bn: "অন্যান্য" },
+];
+
+// Categories selected in the submission form (multi-select toggle set)
+const selectedFormCategories = new Set();
+
+function renderCategoryPicker(){
+  const box = document.getElementById('categoryPicker');
+  box.innerHTML = CATEGORIES.map(c =>
+    `<button type="button" class="category-pill" data-cat="${c.key}">${c.key} <span class="bn">${c.bn}</span></button>`
+  ).join('');
+  box.querySelectorAll('.category-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const cat = btn.dataset.cat;
+      if(selectedFormCategories.has(cat)){
+        selectedFormCategories.delete(cat);
+        btn.classList.remove('selected');
+      } else {
+        selectedFormCategories.add(cat);
+        btn.classList.add('selected');
+      }
+    });
+  });
+}
+renderCategoryPicker();
+
 // Real police-thana lists for Bangladesh's 8 established Metropolitan Police cities, where thana
 // boundaries diverge from upazila boundaries (source: DMP/CMP/KMP/RMP/SMP/BMP/RPMP/GMP official sites
 // and Wikipedia). These are ADDED on top of the district's normal upazila-based thana list, since
@@ -628,6 +688,7 @@ function saveVoted(v){ localStorage.setItem(LS_VOTED, JSON.stringify(v)); }
 
 /* ============ State ============ */
 let currentDistrictFilter = "ALL";
+let currentCategoryFilter = "ALL";
 let currentSearch = "";
 let currentDateFilter = ""; // "" = all dates, else "YYYY-MM-DD"
 let adminDateFilter = ""; // "" = all dates, else "YYYY-MM-DD"
@@ -736,6 +797,10 @@ document.getElementById('complaintForm').addEventListener('submit', async (e) =>
     showToast("Please fill in all fields. / সব ঘর পূরণ করুন।");
     return;
   }
+  if(selectedFormCategories.size === 0){
+    showToast("Please select at least one category. / অন্তত একটি বিষয়শ্রেণী নির্বাচন করুন।");
+    return;
+  }
 
   const submitBtn = e.target.querySelector('button[type=submit]');
   submitBtn.disabled = true;
@@ -744,7 +809,8 @@ document.getElementById('complaintForm').addEventListener('submit', async (e) =>
   // NOTE: complaint_number, status, and vote counts are set automatically
   // by the database — we never send them from the client.
   const { error } = await sb.from('complaints').insert({
-    division, district, upazila, thana, topic, details
+    division, district, upazila, thana, topic, details,
+    categories: [...selectedFormCategories]
   });
 
   submitBtn.disabled = false;
@@ -759,6 +825,8 @@ document.getElementById('complaintForm').addEventListener('submit', async (e) =>
   e.target.reset();
   resetUpazilaThana();
   fDistrict.innerHTML = '<option value="">Select division first</option>'; fDistrict.disabled = true;
+  selectedFormCategories.clear();
+  document.querySelectorAll('#categoryPicker .category-pill.selected').forEach(b => b.classList.remove('selected'));
   showToast("Complaint submitted for review. / যাচাইয়ের জন্য অভিযোগ জমা হয়েছে।");
   renderAll();
 });
@@ -934,10 +1002,29 @@ function renderPagination(totalItems){
   });
 }
 
+function renderCategoryFilterRow(){
+  const row = document.getElementById('categoryFilterRow');
+  const pills = [{ key: 'ALL', bn: 'সকল' }, ...CATEGORIES];
+  row.innerHTML = pills.map(c =>
+    `<button class="category-pill ${currentCategoryFilter === c.key ? 'selected' : ''}" data-cat="${c.key}">${c.key === 'ALL' ? 'All Categories' : c.key} <span class="bn">${c.bn}</span></button>`
+  ).join('');
+  row.querySelectorAll('.category-pill').forEach(btn => {
+    btn.addEventListener('click', () => {
+      currentCategoryFilter = btn.dataset.cat;
+      currentPage = 1;
+      renderFeed();
+    });
+  });
+}
+
 function renderFeed(){
   document.getElementById('dateFilter').value = currentDateFilter;
+  renderCategoryFilterRow();
 
   let filtered = publicPosts.filter(p => currentDistrictFilter === 'ALL' || p.district === currentDistrictFilter);
+  if(currentCategoryFilter !== 'ALL'){
+    filtered = filtered.filter(p => (p.categories || []).includes(currentCategoryFilter));
+  }
   if(currentDateFilter){
     filtered = filtered.filter(p => dateKey(p.created_at) === currentDateFilter);
   }
@@ -949,21 +1036,22 @@ function renderFeed(){
       p.district.toLowerCase().includes(currentSearch) ||
       p.upazila.toLowerCase().includes(currentSearch) ||
       p.thana.toLowerCase().includes(currentSearch) ||
-      (p.complaint_number || '').toLowerCase().includes(currentSearch)
+      (p.complaint_number || '').toLowerCase().includes(currentSearch) ||
+      (p.categories || []).join(' ').toLowerCase().includes(currentSearch)
     );
   }
   filtered = sortFeed(filtered);
 
   const feed = document.getElementById('feed');
   const chip = document.getElementById('activeFilterChip');
-  chip.innerHTML = (currentDistrictFilter !== 'ALL' || currentSearch || currentDateFilter) ?
+  chip.innerHTML = (currentDistrictFilter !== 'ALL' || currentCategoryFilter !== 'ALL' || currentSearch || currentDateFilter) ?
     `<span class="active-filter-chip">
-      ${currentDistrictFilter !== 'ALL' ? currentDistrictFilter : ''} ${currentDateFilter ? dateLabelFromKey(currentDateFilter) : ''} ${currentSearch ? '"'+currentSearch+'"' : ''}
+      ${currentDistrictFilter !== 'ALL' ? currentDistrictFilter : ''} ${currentCategoryFilter !== 'ALL' ? currentCategoryFilter : ''} ${currentDateFilter ? dateLabelFromKey(currentDateFilter) : ''} ${currentSearch ? '"'+currentSearch+'"' : ''}
       <button id="clearFilters">&times;</button>
     </span>` : '';
   const clearBtn = document.getElementById('clearFilters');
   if(clearBtn) clearBtn.addEventListener('click', () => {
-    currentDistrictFilter='ALL'; currentSearch=''; currentDateFilter=''; currentPage = 1;
+    currentDistrictFilter='ALL'; currentCategoryFilter='ALL'; currentSearch=''; currentDateFilter=''; currentPage = 1;
     document.getElementById('searchInput').value='';
     renderFeed();
   });
@@ -995,6 +1083,7 @@ function renderFeed(){
         <div class="status-badge ${st.cls}">${st.en} / ${st.bn}</div>
       </div>
       <div class="post-topic">${escapeHtml(p.topic)}</div>
+      <div>${(p.categories || []).map(c => `<span class="post-category-tag">${escapeHtml(c)}</span>`).join('')}</div>
       <div class="post-details">${escapeHtml(p.details)}</div>
       <div class="post-meta">Submitted ${date}</div>
       <div class="vote-row">
@@ -1054,6 +1143,7 @@ function openDetailModal(p, opts = {}){
     </div>
     <div class="status-badge ${st.cls}">${st.en} / ${st.bn}</div>
     <div class="detail-topic">${escapeHtml(p.topic)}</div>
+    <div>${(p.categories || []).map(c => `<span class="post-category-tag">${escapeHtml(c)}</span>`).join('')}</div>
     <div class="detail-details">${escapeHtml(p.details)}</div>
     <div class="detail-meta-grid">
       <div class="detail-meta-item"><div class="lbl">Submitted</div><div class="val">${dateLabel(p.created_at)}</div></div>
@@ -1216,13 +1306,14 @@ function renderAdminDashboard(){
       p.division.toLowerCase().includes(adminSearchTerm) ||
       p.upazila.toLowerCase().includes(adminSearchTerm) ||
       p.thana.toLowerCase().includes(adminSearchTerm) ||
-      (p.complaint_number || '').toLowerCase().includes(adminSearchTerm)
+      (p.complaint_number || '').toLowerCase().includes(adminSearchTerm) ||
+      (p.categories || []).join(' ').toLowerCase().includes(adminSearchTerm)
     );
   }
 
   const tbody = document.getElementById('adminTableBody');
   if(list.length === 0){
-    tbody.innerHTML = `<tr><td colspan="8" style="text-align:center;color:var(--ink-soft);padding:20px;">No complaints found.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--ink-soft);padding:20px;">No complaints found.</td></tr>`;
     return;
   }
   tbody.innerHTML = list.map(p => `
@@ -1230,6 +1321,7 @@ function renderAdminDashboard(){
       <td style="white-space:nowrap;"><strong>${p.complaint_number || ''}</strong></td>
       <td style="white-space:nowrap;">${dateLabel(p.created_at)}</td>
       <td><strong>${escapeHtml(p.topic)}</strong></td>
+      <td style="font-size:12px;max-width:140px;">${(p.categories || []).join(', ')}</td>
       <td>${p.division}<br>${p.district}<br>${p.upazila}<br>${p.thana}</td>
       <td style="max-width:260px;">${escapeHtml(p.details).slice(0,180)}${p.details.length>180?'…':''}</td>
       <td>👍${p.votes_true} 👎${p.votes_false} ✅${p.votes_solved} ⏳${p.votes_unsolved}</td>
