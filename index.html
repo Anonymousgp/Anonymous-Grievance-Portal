@@ -187,6 +187,7 @@
 
   /* Sidebar */
   .sidebar{position:sticky; top:16px;}
+  @media (max-width:860px){ .sidebar{position:static;} }
   .district-list{list-style:none;margin:0;padding:0;max-height:360px;overflow-y:auto;}
   .district-search-box{
     width:100%;padding:8px 10px;margin-top:10px;border:1px solid var(--line);border-radius:var(--radius);
@@ -195,13 +196,14 @@
   .district-list .no-match{padding:10px 6px;font-size:13px;color:var(--ink-soft);}
 
   /* Category pills: used both in the submission form (multi-select toggle) and the feed filter row */
-  .category-pills{display:flex;flex-wrap:wrap;gap:8px;}
+  .category-pills{display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:8px;}
   .category-pill{
-    border:1px solid var(--line); background:var(--pill-bg); padding:6px 12px;border-radius:20px;
-    font-size:12.5px; font-weight:600; color:var(--ink);
+    border:1px solid var(--line); background:var(--pill-bg); padding:6px 10px;border-radius:20px;
+    font-size:12.5px; font-weight:600; color:var(--ink); text-align:center; white-space:nowrap;
+    overflow:hidden; text-overflow:ellipsis;
   }
   .category-pill.selected{background:var(--green); border-color:var(--green); color:var(--text-on-color);}
-  .category-pill-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
+  .category-pill-row{display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:8px; margin-top:16px; margin-bottom:14px;}
   .category-pill-row .category-pill{background:var(--paper-raised);}
   .category-pill-row .category-pill.selected{background:var(--green-deep); border-color:var(--green-deep);}
   .post-category-tag{
@@ -280,11 +282,11 @@
   .vote-row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
   .vote-btn{
     border:1px solid var(--line); background:var(--pill-bg); padding:7px 12px;border-radius:20px;
-    font-size:13px; display:flex; gap:6px; align-items:center; font-weight:600;
+    font-size:13px; display:flex; gap:6px; align-items:center; justify-content:center; font-weight:600;
   }
   .share-btn{
     border:1px solid var(--line); background:var(--pill-bg); padding:7px 12px;border-radius:20px;
-    font-size:13px; display:flex; gap:6px; align-items:center; font-weight:600; color:var(--ink);
+    font-size:13px; display:flex; gap:6px; align-items:center; justify-content:center; font-weight:600; color:var(--ink);
   }
   .share-btn:hover{border-color:var(--gold);}
   .vote-btn .count{background:var(--count-bg);padding:1px 7px;border-radius:20px;font-size:12px;}
@@ -294,6 +296,16 @@
   .vote-btn.unsolved:hover{border-color:#b8894a;}
   .vote-btn.voted{opacity:.55; cursor:default;}
   .vote-btn:disabled{cursor:not-allowed;}
+
+  /* On narrow screens, force all 5 reaction tiles into one tidy, equal-width row
+     instead of an uneven 2+2+1 wrap. Drop the text labels, keep icon + count.
+     Scoped to .vote-row only, so it doesn't also shrink the modal's standalone Share button. */
+  @media (max-width:480px){
+    .vote-row{display:grid; grid-template-columns:repeat(5, 1fr); gap:4px;}
+    .vote-row .vote-btn, .vote-row .share-btn{padding:7px 2px; font-size:15px; gap:2px;}
+    .vote-row .vote-label{display:none;}
+    .vote-row .vote-btn .count{padding:0 4px; font-size:11px;}
+  }
 
   .empty-state{padding:40px 20px;text-align:center;color:var(--ink-soft);}
   .empty-state .en{font-size:15px;font-weight:600;color:var(--ink);}
@@ -555,7 +567,7 @@
 <div class="admin-overlay" id="adminOverlay">
   <div class="admin-header">
     <div><strong>Admin Dashboard</strong> <span class="bn">/ অ্যাডমিন প্যানেল</span></div>
-    <button class="btn-mini" id="logoutBtn" style="color:#1c2420;">Log out</button>
+    <button class="btn-mini" id="logoutBtn">Log out</button>
   </div>
   <div class="admin-body">
     <div class="stat-row">
@@ -1206,11 +1218,11 @@ function renderFeed(){
       <div class="post-details">${escapeHtml(p.details)}</div>
       <div class="post-meta">Submitted ${date}</div>
       <div class="vote-row">
-        <button class="vote-btn true ${v.true?'voted':''}" ${v.true?'disabled':''} data-id="${p.id}" data-k="true">👍 True <span class="count">${p.votes_true}</span></button>
-        <button class="vote-btn false ${v.false?'voted':''}" ${v.false?'disabled':''} data-id="${p.id}" data-k="false">👎 False <span class="count">${p.votes_false}</span></button>
-        <button class="vote-btn solved ${v.solved?'voted':''}" ${v.solved?'disabled':''} data-id="${p.id}" data-k="solved">✅ Solved <span class="count">${p.votes_solved}</span></button>
-        <button class="vote-btn unsolved ${v.unsolved?'voted':''}" ${v.unsolved?'disabled':''} data-id="${p.id}" data-k="unsolved">⏳ Unsolved <span class="count">${p.votes_unsolved}</span></button>
-        <button class="share-btn" data-share-id="${p.id}" title="Share this complaint">🔗 Share</button>
+        <button class="vote-btn true ${v.true?'voted':''}" ${v.true?'disabled':''} data-id="${p.id}" data-k="true">👍 <span class="vote-label">True</span> <span class="count">${p.votes_true}</span></button>
+        <button class="vote-btn false ${v.false?'voted':''}" ${v.false?'disabled':''} data-id="${p.id}" data-k="false">👎 <span class="vote-label">False</span> <span class="count">${p.votes_false}</span></button>
+        <button class="vote-btn solved ${v.solved?'voted':''}" ${v.solved?'disabled':''} data-id="${p.id}" data-k="solved">✅ <span class="vote-label">Solved</span> <span class="count">${p.votes_solved}</span></button>
+        <button class="vote-btn unsolved ${v.unsolved?'voted':''}" ${v.unsolved?'disabled':''} data-id="${p.id}" data-k="unsolved">⏳ <span class="vote-label">Unsolved</span> <span class="count">${p.votes_unsolved}</span></button>
+        <button class="share-btn" data-share-id="${p.id}" title="Share this complaint">🔗 <span class="vote-label">Share</span></button>
       </div>
     </div>`;
   }).join('');
