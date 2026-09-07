@@ -1,6 +1,17 @@
 <!DOCTYPE html>
 <html lang="bn">
 <head>
+<script>
+  // Apply saved/system theme immediately, before first paint, to avoid a light-mode flash.
+  (function(){
+    try {
+      var saved = localStorage.getItem('gp_theme');
+      var theme = (saved === 'dark' || saved === 'light') ? saved :
+        (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      document.documentElement.setAttribute('data-theme', theme);
+    } catch(e) {}
+  })();
+</script>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AGP - Anonymous Grievance Portal | বেনামী অভিযোগ পোর্টাল (Benami Ovijog Portal)</title>
@@ -51,6 +62,61 @@
     --solved:#1c6e4a;
     --dismissed:#8c3d34;
     --radius:3px;
+
+    /* Extra tokens so dark mode can override every surface consistently */
+    --input-bg:#fdfcf9;
+    --pill-bg:#fbfaf6;
+    --chip-bg:#eef3ea;
+    --chip-border:#c9dcc4;
+    --hover-bg:#f6f4ee;
+    --table-header-bg:#f0ede1;
+    --warning-bg:#fdf3e0;
+    --warning-border:#e8d9ad;
+    --warning-text:#5b451a;
+    --divider-soft:#ece7d9;
+    --count-bg:#e9e5d6;
+    --danger-border:#e3b7b3;
+    --modal-overlay-bg:rgba(15,20,17,.55);
+    --shadow-color:rgba(0,0,0,.25);
+    --text-strong:#333;
+    --text-on-color:#fff; /* white text sitting on saturated buttons/badges — stays white in both themes */
+  }
+
+  /* ============ DARK MODE ============ */
+  [data-theme="dark"]{
+    --green-deep:#0a2a20;
+    --green:#1a8f5f;
+    --green-bright:#22a86f;
+    --red:#e05a51;
+    --paper:#12161a;
+    --paper-raised:#1b2127;
+    --ink:#e8e6df;
+    --ink-soft:#9aa39c;
+    --line:#333c42;
+    --gold:#d3a768;
+    --pending:#c9b25a;
+    --published:#2fa06b;
+    --solved:#3ecb8a;
+    --dismissed:#e07d72;
+
+    --input-bg:#20262c;
+    --pill-bg:#242b31;
+    --chip-bg:#1c3327;
+    --chip-border:#2f5e44;
+    --hover-bg:#20262c;
+    --table-header-bg:#20262c;
+    --warning-bg:#332a15;
+    --warning-border:#5a4a20;
+    --warning-text:#e8d9ad;
+    --divider-soft:#2a3037;
+    --count-bg:#2a3037;
+    --danger-border:#5a3330;
+    --modal-overlay-bg:rgba(0,0,0,.65);
+    --shadow-color:rgba(0,0,0,.5);
+    --text-strong:#d8d6cf;
+  }
+  [data-theme="dark"] img, [data-theme="dark"] .brand-mark{
+    filter: none;
   }
   *{box-sizing:border-box;}
   html,body{margin:0;padding:0;}
@@ -83,16 +149,22 @@
     width:42px;height:42px;border-radius:50%;
     background:var(--red);
     display:flex;align-items:center;justify-content:center;
-    font-weight:800; font-size:18px; color:#fff; flex:none;
+    font-weight:800; font-size:18px; color:var(--text-on-color); flex:none;
     border:2px solid #f2efe4;
   }
   .brand-title .en{font-size:20px; font-weight:700; letter-spacing:0.2px;}
   .brand-title .bn-sub{color:#cfead9; font-size:13px;}
   .topbar-note{font-size:12.5px; color:#cfead9; text-align:right; max-width:300px;}
+  .theme-toggle{
+    background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25); color:#f2efe4;
+    width:38px; height:38px; border-radius:50%; font-size:17px; flex:none; margin-left:8px;
+    display:flex; align-items:center; justify-content:center; transition:background .15s;
+  }
+  .theme-toggle:hover{background:rgba(255,255,255,.22);}
 
   /* ===== Warning banner ===== */
   .warning-banner{
-    background:#fdf3e0; border-bottom:1px solid #e8d9ad; color:#5b451a;
+    background:var(--warning-bg); border-bottom:1px solid var(--warning-border); color:var(--warning-text);
     font-size:14px; padding:10px 20px;
   }
   .warning-banner-inner{max-width:1180px;margin:0 auto;display:flex;gap:10px;align-items:flex-start;}
@@ -118,32 +190,32 @@
   .district-list{list-style:none;margin:0;padding:0;max-height:360px;overflow-y:auto;}
   .district-search-box{
     width:100%;padding:8px 10px;margin-top:10px;border:1px solid var(--line);border-radius:var(--radius);
-    font-family:inherit; font-size:13.5px; background:#fdfcf9; box-sizing:border-box;
+    font-family:inherit; font-size:13.5px; background:var(--input-bg); box-sizing:border-box;
   }
   .district-list .no-match{padding:10px 6px;font-size:13px;color:var(--ink-soft);}
 
   /* Category pills: used both in the submission form (multi-select toggle) and the feed filter row */
   .category-pills{display:flex;flex-wrap:wrap;gap:8px;}
   .category-pill{
-    border:1px solid var(--line); background:#fbfaf6; padding:6px 12px;border-radius:20px;
+    border:1px solid var(--line); background:var(--pill-bg); padding:6px 12px;border-radius:20px;
     font-size:12.5px; font-weight:600; color:var(--ink);
   }
-  .category-pill.selected{background:var(--green); border-color:var(--green); color:#fff;}
+  .category-pill.selected{background:var(--green); border-color:var(--green); color:var(--text-on-color);}
   .category-pill-row{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px;}
-  .category-pill-row .category-pill{background:#fff;}
+  .category-pill-row .category-pill{background:var(--paper-raised);}
   .category-pill-row .category-pill.selected{background:var(--green-deep); border-color:var(--green-deep);}
   .post-category-tag{
     display:inline-block; font-size:11px; font-weight:600; color:var(--green-deep);
-    background:#eef3ea; border:1px solid #c9dcc4; padding:2px 9px;border-radius:12px;
+    background:var(--chip-bg); border:1px solid var(--chip-border); padding:2px 9px;border-radius:12px;
     margin:6px 6px 0 0;
   }
-  .district-list li{border-bottom:1px solid #ece7d9;}
+  .district-list li{border-bottom:1px solid var(--divider-soft);}
   .district-list button{
     width:100%;text-align:left;background:none;border:none;padding:8px 6px;
     font-size:13.5px;color:var(--ink); border-radius:2px;
   }
-  .district-list button:hover{background:#f0ede1;}
-  .district-list button.active{background:var(--green); color:#fff;}
+  .district-list button:hover{background:var(--table-header-bg);}
+  .district-list button.active{background:var(--green); color:var(--text-on-color);}
 
   /* Complaint panel (full width, top of page) */
   .complaint-panel{margin-bottom:18px;}
@@ -167,20 +239,20 @@
   .search-row{display:flex; gap:8px;}
   .search-row input{
     flex:1;padding:9px 10px;border:1px solid var(--line);border-radius:var(--radius);
-    font-size:14px; font-family:inherit; background:#fdfcf9;
+    font-size:14px; font-family:inherit; background:var(--input-bg);
   }
   .search-row button{
-    background:var(--green); color:#fff; border:none; padding:0 16px;border-radius:var(--radius);
+    background:var(--green); color:var(--text-on-color); border:none; padding:0 16px;border-radius:var(--radius);
     font-weight:600; font-size:13.5px;
   }
   #dateFilter, #adminDateFilter{
-    padding:6px 8px;border:1px solid var(--line);border-radius:var(--radius);font-size:13px;font-family:inherit;background:#fdfcf9;
+    padding:6px 8px;border:1px solid var(--line);border-radius:var(--radius);font-size:13px;font-family:inherit;background:var(--input-bg);
   }
 
   /* Sort/filter row */
   .feed-controls{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:10px;margin-bottom:14px;}
   .active-filter-chip{
-    display:inline-flex;align-items:center;gap:6px;background:#eef3ea;border:1px solid #c9dcc4;
+    display:inline-flex;align-items:center;gap:6px;background:var(--chip-bg);border:1px solid var(--chip-border);
     padding:4px 10px;border-radius:20px;font-size:12.5px;color:var(--green-deep);
   }
   .active-filter-chip button{background:none;border:none;color:var(--red);font-weight:700;}
@@ -194,7 +266,7 @@
   .post-top{display:flex;justify-content:space-between;gap:10px;align-items:flex-start;flex-wrap:wrap;}
   .post-loc{font-size:12px;color:var(--ink-soft);}
   .status-badge{
-    font-size:11.5px;font-weight:700;letter-spacing:.3px;padding:3px 10px;border-radius:20px;color:#fff;flex:none;
+    font-size:11.5px;font-weight:700;letter-spacing:.3px;padding:3px 10px;border-radius:20px;color:var(--text-on-color);flex:none;
   }
   .status-published{background:var(--published);}
   .status-solved{background:var(--solved);}
@@ -202,15 +274,20 @@
   .status-pending{background:var(--pending);}
 
   .post-topic{font-size:17px;font-weight:700;margin:10px 0 4px;}
-  .post-details{font-size:14.5px;color:#333;white-space:pre-wrap;}
+  .post-details{font-size:14.5px;color:var(--text-strong);white-space:pre-wrap;}
   .post-meta{font-size:12px;color:var(--ink-soft);margin-top:10px;}
 
   .vote-row{display:flex;gap:8px;margin-top:14px;flex-wrap:wrap;}
   .vote-btn{
-    border:1px solid var(--line); background:#fbfaf6; padding:7px 12px;border-radius:20px;
+    border:1px solid var(--line); background:var(--pill-bg); padding:7px 12px;border-radius:20px;
     font-size:13px; display:flex; gap:6px; align-items:center; font-weight:600;
   }
-  .vote-btn .count{background:#e9e5d6;padding:1px 7px;border-radius:20px;font-size:12px;}
+  .share-btn{
+    border:1px solid var(--line); background:var(--pill-bg); padding:7px 12px;border-radius:20px;
+    font-size:13px; display:flex; gap:6px; align-items:center; font-weight:600; color:var(--ink);
+  }
+  .share-btn:hover{border-color:var(--gold);}
+  .vote-btn .count{background:var(--count-bg);padding:1px 7px;border-radius:20px;font-size:12px;}
   .vote-btn.true:hover{border-color:#1c6e4a;}
   .vote-btn.false:hover{border-color:#8c3d34;}
   .vote-btn.solved:hover{border-color:#0e7a4f;}
@@ -227,11 +304,11 @@
     margin-top:20px; padding-top:6px;
   }
   .page-btn{
-    border:1px solid var(--line); background:#fbfaf6; padding:7px 12px;border-radius:var(--radius);
+    border:1px solid var(--line); background:var(--pill-bg); padding:7px 12px;border-radius:var(--radius);
     font-size:13px; font-weight:600; color:var(--ink); min-width:38px; text-align:center;
   }
   .page-btn:hover:not(:disabled){border-color:var(--green);}
-  .page-btn.active{background:var(--green-deep); color:#fff; border-color:var(--green-deep);}
+  .page-btn.active{background:var(--green-deep); color:var(--text-on-color); border-color:var(--green-deep);}
   .page-btn:disabled{opacity:.4; cursor:not-allowed;}
   .page-ellipsis{padding:7px 4px;color:var(--ink-soft);font-size:13px;}
 
@@ -241,7 +318,7 @@
   .field label .bn-sub{font-weight:500;color:var(--ink-soft);font-size:12px;margin-left:4px;}
   .field select, .field input[type=text], .field input[type=password], .field textarea{
     width:100%;padding:9px 10px;border:1px solid var(--line);border-radius:var(--radius);
-    font-family:inherit; font-size:14px; background:#fdfcf9;
+    font-family:inherit; font-size:14px; background:var(--input-bg);
     box-sizing:border-box; height:40px;
   }
   .field textarea{height:auto;}
@@ -250,16 +327,17 @@
   @media (max-width:520px){.grid2{grid-template-columns:1fr;}}
 
   .btn-primary{
-    background:var(--red); color:#fff; border:none; padding:12px 20px;border-radius:var(--radius);
+    background:var(--red); color:var(--text-on-color); border:none; padding:12px 20px;border-radius:var(--radius);
     font-weight:700; font-size:14.5px; width:100%;
   }
   .btn-primary:hover{background:#a92a24;}
+  [data-theme="dark"] .btn-primary:hover{background:#c94a42;}
   .form-note{font-size:12px;color:var(--ink-soft); margin-top:10px;}
 
   .toast{
     position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
-    background:var(--green-deep);color:#fff;padding:12px 22px;border-radius:24px;font-size:14px;
-    box-shadow:0 6px 20px rgba(0,0,0,.25); z-index:999; display:none;
+    background:var(--green-deep);color:var(--text-on-color);padding:12px 22px;border-radius:24px;font-size:14px;
+    box-shadow:0 6px 20px var(--shadow-color); z-index:999; display:none;
   }
 
   /* Footer + hidden admin trigger */
@@ -271,12 +349,12 @@
 
   /* Modal */
   .modal-overlay{
-    position:fixed;inset:0;background:rgba(15,20,17,.55);display:none;align-items:center;justify-content:center;
+    position:fixed;inset:0;background:var(--modal-overlay-bg);display:none;align-items:center;justify-content:center;
     z-index:1002; padding:20px;
   }
   .modal-overlay.open{display:flex;}
   .modal{
-    background:#fff;border-radius:6px;max-width:440px;width:100%;padding:24px;
+    background:var(--paper-raised);border-radius:6px;max-width:440px;width:100%;padding:24px;
     max-height:90vh;overflow-y:auto;
   }
   .modal h2{margin-top:0;font-size:18px;}
@@ -287,40 +365,40 @@
   .detail-loc{font-size:12.5px;color:var(--ink-soft);margin-bottom:4px;}
   .detail-number{font-weight:700;color:var(--green-deep);}
   .detail-topic{font-size:19px;font-weight:700;margin:8px 0 12px;padding-right:24px;}
-  .detail-details{font-size:14.5px;color:#333;white-space:pre-wrap;line-height:1.6;margin-bottom:16px;}
+  .detail-details{font-size:14.5px;color:var(--text-strong);white-space:pre-wrap;line-height:1.6;margin-bottom:16px;}
   .detail-meta-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px;}
-  .detail-meta-item{background:#f6f4ee;border:1px solid var(--line);border-radius:var(--radius);padding:8px 10px;}
+  .detail-meta-item{background:var(--hover-bg);border:1px solid var(--line);border-radius:var(--radius);padding:8px 10px;}
   .detail-meta-item .lbl{font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.3px;}
   .detail-meta-item .val{font-size:13.5px;font-weight:600;margin-top:2px;}
   .detail-votes{display:flex;gap:10px;flex-wrap:wrap;margin-top:4px;}
-  .detail-votes span{font-size:13px;background:#eef3ea;padding:4px 10px;border-radius:16px;}
+  .detail-votes span{font-size:13px;background:var(--chip-bg);padding:4px 10px;border-radius:16px;}
 
   /* Admin dashboard */
   .admin-overlay{position:fixed;inset:0;background:var(--paper);z-index:1001;overflow-y:auto;display:none;}
   .admin-overlay.open{display:block;}
   .admin-header{
-    background:var(--green-deep);color:#fff;padding:16px 24px;display:flex;justify-content:space-between;align-items:center;
+    background:var(--green-deep);color:var(--text-on-color);padding:16px 24px;display:flex;justify-content:space-between;align-items:center;
   }
   .admin-body{max-width:1100px;margin:0 auto;padding:24px;}
   .stat-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;}
-  .stat-box{background:#fff;border:1px solid var(--line);border-radius:var(--radius);padding:14px 20px;min-width:130px;cursor:pointer;transition:box-shadow .15s, border-color .15s;}
+  .stat-box{background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--radius);padding:14px 20px;min-width:130px;cursor:pointer;transition:box-shadow .15s, border-color .15s;}
   .stat-box:hover{border-color:var(--green); box-shadow:0 2px 8px rgba(15,92,63,.12);}
-  .stat-box.active{border-color:var(--green-deep); background:#eef3ea; box-shadow:0 2px 8px rgba(15,92,63,.18);}
+  .stat-box.active{border-color:var(--green-deep); background:var(--chip-bg); box-shadow:0 2px 8px rgba(15,92,63,.18);}
   .stat-box .num{font-size:26px;font-weight:800;color:var(--green-deep);}
   .stat-box .lbl{font-size:12px;color:var(--ink-soft);}
   .admin-tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid var(--line);}
   .admin-tab{padding:10px 16px;background:none;border:none;font-weight:600;font-size:13.5px;color:var(--ink-soft);border-bottom:2px solid transparent;}
   .admin-tab.active{color:var(--green-deep);border-bottom-color:var(--green-deep);}
-  table{width:100%;border-collapse:collapse;background:#fff;font-size:13px;}
+  table{width:100%;border-collapse:collapse;background:var(--paper-raised);font-size:13px;}
   table th,table td{padding:9px 10px;border-bottom:1px solid var(--line);text-align:left;vertical-align:top;}
-  table th{background:#f0ede1;font-size:12px;}
+  table th{background:var(--table-header-bg);font-size:12px;}
   table tbody tr{cursor:pointer;}
-  table tbody tr:hover{background:#f6f4ee;}
+  table tbody tr:hover{background:var(--hover-bg);}
   .row-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
   .row-actions select{padding:5px;border-radius:3px;border:1px solid var(--line);font-size:12px;}
-  .btn-mini{border:1px solid var(--line);background:#fbfaf6;padding:5px 10px;border-radius:3px;font-size:12px;font-weight:600;}
-  .btn-mini.danger{color:var(--red);border-color:#e3b7b3;}
-  .btn-mini.primary{background:var(--green);color:#fff;border:none;}
+  .btn-mini{border:1px solid var(--line);background:var(--pill-bg);padding:5px 10px;border-radius:3px;font-size:12px;font-weight:600;}
+  .btn-mini.danger{color:var(--red);border-color:var(--danger-border);}
+  .btn-mini.primary{background:var(--green);color:var(--text-on-color);border:none;}
   .err-msg{color:var(--red);font-size:13px;margin-top:6px;display:none;}
   .ok-msg{color:var(--green);font-size:13px;margin-top:6px;display:none;}
 </style>
@@ -340,6 +418,7 @@
       100% Anonymous — no name, phone, or contact info is ever collected.<br>
       <span class="bn">সম্পূর্ণ বেনামী — কোনো নাম, ফোন নম্বর বা পরিচয় সংগ্রহ করা হয় না।</span>
     </div>
+    <button id="themeToggle" class="theme-toggle" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
   </div>
 </div>
 
@@ -831,6 +910,46 @@ document.getElementById('complaintForm').addEventListener('submit', async (e) =>
   renderAll();
 });
 
+/* ============ Share a complaint ============ */
+function buildShareUrl(post){
+  const url = new URL(location.href);
+  url.search = ''; // drop any existing query params
+  url.searchParams.set('c', post.complaint_number || post.id);
+  return url.toString();
+}
+
+async function shareComplaint(post){
+  const url = buildShareUrl(post);
+  const shareText = `${post.complaint_number ? post.complaint_number + ': ' : ''}${post.topic}`;
+
+  if(navigator.share){
+    try {
+      await navigator.share({ title: 'AGP - Anonymous Grievance Portal', text: shareText, url });
+      return;
+    } catch(e) {
+      // User cancelled the native share sheet, or it failed — fall through to copy-link below.
+      if(e && e.name === 'AbortError') return;
+    }
+  }
+
+  try {
+    await navigator.clipboard.writeText(url);
+    showToast("Link copied to clipboard! / লিংক কপি হয়েছে!");
+  } catch(e) {
+    // Clipboard API blocked (older browser, non-HTTPS, etc.) — show the link so it can be copied manually.
+    window.prompt("Copy this link:", url);
+  }
+}
+
+/* ============ Deep link: open a specific complaint from a shared URL (?c=COMPLAINT_NUMBER) ============ */
+function checkDeepLinkedComplaint(){
+  const params = new URLSearchParams(location.search);
+  const target = params.get('c');
+  if(!target) return;
+  const post = publicPosts.find(p => p.complaint_number === target || p.id === target);
+  if(post) openDetailModal(post);
+}
+
 /* ============ Toast ============ */
 let toastTimer;
 function showToast(msg){
@@ -1091,9 +1210,18 @@ function renderFeed(){
         <button class="vote-btn false ${v.false?'voted':''}" ${v.false?'disabled':''} data-id="${p.id}" data-k="false">👎 False <span class="count">${p.votes_false}</span></button>
         <button class="vote-btn solved ${v.solved?'voted':''}" ${v.solved?'disabled':''} data-id="${p.id}" data-k="solved">✅ Solved <span class="count">${p.votes_solved}</span></button>
         <button class="vote-btn unsolved ${v.unsolved?'voted':''}" ${v.unsolved?'disabled':''} data-id="${p.id}" data-k="unsolved">⏳ Unsolved <span class="count">${p.votes_unsolved}</span></button>
+        <button class="share-btn" data-share-id="${p.id}" title="Share this complaint">🔗 Share</button>
       </div>
     </div>`;
   }).join('');
+
+  feed.querySelectorAll('.share-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const post = publicPosts.find(p => p.id === btn.dataset.shareId);
+      if(post) shareComplaint(post);
+    });
+  });
 
   feed.querySelectorAll('.vote-btn').forEach(btn => {
     btn.addEventListener('click', async (e) => {
@@ -1125,11 +1253,16 @@ function renderFeed(){
   renderPagination(filtered.length);
 }
 
+let deepLinkChecked = false;
 async function renderAll(){
   renderDistrictFilter();
   await fetchPublicPosts();
   renderFeed();
   if(adminCreds){ await fetchAndRenderAdmin(); }
+  if(!deepLinkChecked){
+    deepLinkChecked = true;
+    checkDeepLinkedComplaint();
+  }
 }
 
 /* ============ Shared complaint detail modal (public + admin) ============ */
@@ -1156,7 +1289,10 @@ function openDetailModal(p, opts = {}){
       <span>✅ Solved: ${p.votes_solved}</span>
       <span>⏳ Unsolved: ${p.votes_unsolved}</span>
     </div>
+    ${p.status !== 'pending' ? '<button class="share-btn" id="modalShareBtn" style="margin-top:16px;">🔗 Share this complaint</button>' : ''}
   `;
+  const modalShareBtn = document.getElementById('modalShareBtn');
+  if(modalShareBtn) modalShareBtn.addEventListener('click', () => shareComplaint(p));
   document.getElementById('detailOverlay').classList.add('open');
 }
 document.getElementById('closeDetail').addEventListener('click', () => {
@@ -1435,6 +1571,29 @@ document.getElementById('resetAdminBtn').addEventListener('click', async () => {
   okEl.style.display = 'block';
   setTimeout(() => okEl.style.display = 'none', 2500);
 });
+
+/* ============ Dark mode ============ */
+const THEME_KEY = 'gp_theme'; // device-local UI preference only — not personal data
+function applyTheme(theme){
+  document.documentElement.setAttribute('data-theme', theme);
+  document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
+  localStorage.setItem(THEME_KEY, theme);
+}
+function initTheme(){
+  const saved = localStorage.getItem(THEME_KEY);
+  if(saved === 'dark' || saved === 'light'){
+    applyTheme(saved);
+  } else {
+    // No saved preference yet — default to the device's system preference.
+    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+    applyTheme(prefersDark ? 'dark' : 'light');
+  }
+}
+document.getElementById('themeToggle').addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme');
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+});
+initTheme();
 
 /* ============ Init ============ */
 renderAll();
