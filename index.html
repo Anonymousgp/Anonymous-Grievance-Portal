@@ -81,6 +81,7 @@
     --shadow-color:rgba(0,0,0,.25);
     --text-strong:#333;
     --text-on-color:#fff; /* white text sitting on saturated buttons/badges — stays white in both themes */
+    --stat-accent:#0b3d2e; /* stat-box numbers — needs its own token since --green-deep gets too dark/muted for this contrast in dark mode */
   }
 
   /* ============ DARK MODE ============ */
@@ -116,6 +117,7 @@
     --modal-overlay-bg:rgba(0,0,0,.65);
     --shadow-color:rgba(0,0,0,.5);
     --text-strong:#d8d6cf;
+    --stat-accent:#3ecb8a; /* bright green — readable against dark stat-box tiles */
   }
   [data-theme="dark"] img, [data-theme="dark"] .brand-mark{
     filter: none;
@@ -266,7 +268,8 @@
   .district-details .district-list{margin-top:12px;}
 
   /* Search */
-  .search-row{display:flex; gap:8px;}
+  .search-row{display:flex; gap:8px; flex-wrap:wrap;}
+  .search-row input[type=text]{flex:1 1 200px; min-width:0;}
   .search-row input{
     flex:1;padding:9px 10px;border:1px solid var(--line);border-radius:var(--radius);
     font-size:14px; font-family:inherit; background:var(--input-bg);
@@ -417,14 +420,21 @@
   .admin-overlay{position:fixed;inset:0;background:var(--paper);z-index:1001;overflow-y:auto;display:none;}
   .admin-overlay.open{display:block;}
   .admin-header{
-    background:var(--green-deep);color:var(--text-on-color);padding:16px 24px;display:flex;justify-content:space-between;align-items:center;
+    background:var(--green-deep);color:var(--text-on-color);padding:16px 24px;display:flex;justify-content:space-between;align-items:center;gap:10px;
   }
+  .admin-header-actions{display:flex;align-items:center;gap:10px;}
   .admin-body{max-width:1100px;margin:0 auto;padding:24px;}
+  @media (max-width:600px){
+    .admin-header{padding:12px 14px;}
+    .admin-body{padding:14px;}
+    .stat-box{padding:10px 14px;min-width:100px;}
+    .stat-box .num{font-size:20px;}
+  }
   .stat-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;}
   .stat-box{background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--radius);padding:14px 20px;min-width:130px;cursor:pointer;transition:box-shadow .15s, border-color .15s;}
   .stat-box:hover{border-color:var(--green); box-shadow:0 2px 8px rgba(15,92,63,.12);}
   .stat-box.active{border-color:var(--green-deep); background:var(--chip-bg); box-shadow:0 2px 8px rgba(15,92,63,.18);}
-  .stat-box .num{font-size:26px;font-weight:800;color:var(--green-deep);}
+  .stat-box .num{font-size:26px;font-weight:800;color:var(--stat-accent);}
   .stat-box .lbl{font-size:12px;color:var(--ink-soft);}
   .admin-tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid var(--line);}
   .admin-tab{padding:10px 16px;background:none;border:none;font-weight:600;font-size:13.5px;color:var(--ink-soft);border-bottom:2px solid transparent;}
@@ -436,7 +446,7 @@
   table tbody tr:hover{background:var(--hover-bg);}
   .row-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
   .row-actions select{padding:5px;border-radius:3px;border:1px solid var(--line);font-size:12px;}
-  .btn-mini{border:1px solid var(--line);background:var(--pill-bg);padding:5px 10px;border-radius:3px;font-size:12px;font-weight:600;}
+  .btn-mini{border:1px solid var(--line);background:var(--pill-bg);padding:5px 10px;border-radius:3px;font-size:12px;font-weight:600;color:var(--ink);}
   .btn-mini.danger{color:var(--red);border-color:var(--danger-border);}
   .btn-mini.primary{background:var(--green);color:var(--text-on-color);border:none;}
   .err-msg{color:var(--red);font-size:13px;margin-top:6px;display:none;}
@@ -595,7 +605,10 @@
 <div class="admin-overlay" id="adminOverlay">
   <div class="admin-header">
     <div><strong>Admin Dashboard</strong> <span class="bn">/ অ্যাডমিন প্যানেল</span></div>
-    <button class="btn-mini" id="logoutBtn">Log out</button>
+    <div class="admin-header-actions">
+      <button id="adminThemeToggle" class="theme-toggle" style="position:static;" title="Toggle dark mode" aria-label="Toggle dark mode">🌙</button>
+      <button class="btn-mini" id="logoutBtn">Log out</button>
+    </div>
   </div>
   <div class="admin-body">
     <div class="stat-row">
@@ -1616,16 +1629,26 @@ document.getElementById('resetAdminBtn').addEventListener('click', async () => {
 const THEME_KEY = 'gp_theme'; // device-local UI preference only — not personal data
 function applyTheme(theme){
   document.documentElement.setAttribute('data-theme', theme);
-  document.getElementById('themeToggle').textContent = theme === 'dark' ? '☀️' : '🌙';
+  const icon = theme === 'dark' ? '☀️' : '🌙';
+  document.getElementById('themeToggle').textContent = icon;
+  const adminToggle = document.getElementById('adminThemeToggle');
+  if(adminToggle) adminToggle.textContent = icon;
   localStorage.setItem(THEME_KEY, theme);
 }
 function initTheme(){
   // The inline <head> script already applied the correct theme before first paint
-  // (saved preference, or light by default). Just sync the toggle icon to match.
+  // (saved preference, or light by default). Just sync both toggle icons to match.
   const current = document.documentElement.getAttribute('data-theme') || 'light';
-  document.getElementById('themeToggle').textContent = current === 'dark' ? '☀️' : '🌙';
+  const icon = current === 'dark' ? '☀️' : '🌙';
+  document.getElementById('themeToggle').textContent = icon;
+  const adminToggle = document.getElementById('adminThemeToggle');
+  if(adminToggle) adminToggle.textContent = icon;
 }
 document.getElementById('themeToggle').addEventListener('click', () => {
+  const current = document.documentElement.getAttribute('data-theme');
+  applyTheme(current === 'dark' ? 'light' : 'dark');
+});
+document.getElementById('adminThemeToggle').addEventListener('click', () => {
   const current = document.documentElement.getAttribute('data-theme');
   applyTheme(current === 'dark' ? 'light' : 'dark');
 });
