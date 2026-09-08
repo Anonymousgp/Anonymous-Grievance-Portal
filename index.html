@@ -2,12 +2,12 @@
 <html lang="bn">
 <head>
 <script>
-  // Apply saved/system theme immediately, before first paint, to avoid a light-mode flash.
+  // Apply saved theme immediately, before first paint, to avoid a flash of the wrong theme.
+  // Default is always light mode unless the person has explicitly switched before.
   (function(){
     try {
       var saved = localStorage.getItem('gp_theme');
-      var theme = (saved === 'dark' || saved === 'light') ? saved :
-        (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light');
+      var theme = (saved === 'dark' || saved === 'light') ? saved : 'light';
       document.documentElement.setAttribute('data-theme', theme);
     } catch(e) {}
   })();
@@ -47,6 +47,7 @@
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 <style>
   :root{
+    color-scheme: light;
     --green-deep:#0b3d2e;
     --green:#0f5c3f;
     --green-bright:#0e7a4f;
@@ -84,6 +85,7 @@
 
   /* ============ DARK MODE ============ */
   [data-theme="dark"]{
+    color-scheme: dark;
     --green-deep:#0a2a20;
     --green:#1a8f5f;
     --green-bright:#22a86f;
@@ -119,6 +121,10 @@
     filter: none;
   }
   *{box-sizing:border-box;}
+  /* Native form controls (button/select/input/textarea) carry their own default text color
+     in every browser, which silently ignores inherited theme color unless reset explicitly.
+     This single rule is what makes dropdowns, date pickers, and all buttons follow dark mode. */
+  button, select, input, textarea{ color:inherit; font:inherit; }
   html,body{margin:0;padding:0;}
   body{
     background:var(--paper);
@@ -139,28 +145,44 @@
     background:var(--green-deep);
     color:#f2efe4;
     border-bottom:4px solid var(--gold);
+    position:relative;
   }
   .topbar-inner{
-    max-width:1180px; margin:0 auto; padding:18px 20px;
+    max-width:1180px; margin:0 auto; padding:12px 56px 12px 20px;
     display:flex; align-items:center; justify-content:space-between; gap:16px;
   }
-  .brand{display:flex; align-items:center; gap:12px;}
+  .brand{display:flex; align-items:center; gap:10px; min-width:0; flex:none;}
   .brand-mark{
-    width:42px;height:42px;border-radius:50%;
+    width:36px;height:36px;border-radius:50%;
     background:var(--red);
     display:flex;align-items:center;justify-content:center;
-    font-weight:800; font-size:18px; color:var(--text-on-color); flex:none;
+    font-weight:800; font-size:16px; color:var(--text-on-color); flex:none;
     border:2px solid #f2efe4;
   }
-  .brand-title .en{font-size:20px; font-weight:700; letter-spacing:0.2px;}
-  .brand-title .bn-sub{color:#cfead9; font-size:13px;}
-  .topbar-note{font-size:12.5px; color:#cfead9; text-align:right; max-width:300px;}
+  .brand-title .en{font-size:17px; font-weight:700; letter-spacing:0.2px;}
+  .brand-title .bn-sub{color:#cfead9; font-size:12px;}
+  .topbar-note{
+    font-size:11.5px; line-height:1.4; color:#cfead9; text-align:right;
+    flex:1 1 auto; min-width:0;
+  }
   .theme-toggle{
     background:rgba(255,255,255,.12); border:1px solid rgba(255,255,255,.25); color:#f2efe4;
-    width:38px; height:38px; border-radius:50%; font-size:17px; flex:none; margin-left:8px;
+    width:26px; height:26px; border-radius:50%; font-size:13px;
     display:flex; align-items:center; justify-content:center; transition:background .15s;
+    padding:0; line-height:1; text-align:center;
+    position:absolute; top:8px; right:10px;
   }
   .theme-toggle:hover{background:rgba(255,255,255,.22);}
+
+  @media (max-width:600px){
+    .topbar-inner{padding:10px 42px 10px 12px; gap:8px;}
+    .brand{gap:7px;}
+    .brand-mark{width:30px;height:30px;font-size:14px;}
+    .brand-title .en{font-size:14.5px;}
+    .brand-title .bn-sub{font-size:10.5px;}
+    .topbar-note{font-size:10px;}
+    .theme-toggle{width:22px;height:22px;font-size:11px;top:6px;right:6px;}
+  }
 
   /* ===== Warning banner ===== */
   .warning-banner{
@@ -196,11 +218,12 @@
   .district-list .no-match{padding:10px 6px;font-size:13px;color:var(--ink-soft);}
 
   /* Category pills: used both in the submission form (multi-select toggle) and the feed filter row */
-  .category-pills{display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:8px;}
+  .category-pills{display:grid; grid-template-columns:repeat(auto-fill, minmax(150px, 1fr)); gap:8px; align-items:stretch;}
   .category-pill{
-    border:1px solid var(--line); background:var(--pill-bg); padding:6px 10px;border-radius:20px;
-    font-size:12.5px; font-weight:600; color:var(--ink); text-align:center; white-space:nowrap;
-    overflow:hidden; text-overflow:ellipsis;
+    border:1px solid var(--line); background:var(--pill-bg); padding:8px 10px;border-radius:14px;
+    font-size:12.5px; font-weight:600; color:var(--ink); text-align:center;
+    white-space:normal; word-break:break-word; line-height:1.3;
+    display:flex; align-items:center; justify-content:center;
   }
   .category-pill.selected{background:var(--green); border-color:var(--green); color:var(--text-on-color);}
   .category-pill-row{display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:8px; margin-top:16px; margin-bottom:14px;}
@@ -1592,14 +1615,10 @@ function applyTheme(theme){
   localStorage.setItem(THEME_KEY, theme);
 }
 function initTheme(){
-  const saved = localStorage.getItem(THEME_KEY);
-  if(saved === 'dark' || saved === 'light'){
-    applyTheme(saved);
-  } else {
-    // No saved preference yet — default to the device's system preference.
-    const prefersDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
-    applyTheme(prefersDark ? 'dark' : 'light');
-  }
+  // The inline <head> script already applied the correct theme before first paint
+  // (saved preference, or light by default). Just sync the toggle icon to match.
+  const current = document.documentElement.getAttribute('data-theme') || 'light';
+  document.getElementById('themeToggle').textContent = current === 'dark' ? '☀️' : '🌙';
 }
 document.getElementById('themeToggle').addEventListener('click', () => {
   const current = document.documentElement.getAttribute('data-theme');
