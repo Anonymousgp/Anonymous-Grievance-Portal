@@ -148,7 +148,7 @@
     position:relative;
   }
   .topbar-inner{
-    max-width:1180px; margin:0 auto; padding:12px 56px 12px 20px;
+    max-width:1180px; margin:0 auto; padding:18px 56px 18px 20px;
     display:flex; align-items:center; justify-content:space-between; gap:16px;
   }
   .brand{display:flex; align-items:center; gap:10px; min-width:0; flex:none;}
@@ -170,18 +170,23 @@
     width:26px; height:26px; border-radius:50%; font-size:13px;
     display:flex; align-items:center; justify-content:center; transition:background .15s;
     padding:0; line-height:1; text-align:center;
-    position:absolute; top:8px; right:10px;
+    position:absolute; top:10px; right:10px;
   }
   .theme-toggle:hover{background:rgba(255,255,255,.22);}
 
   @media (max-width:600px){
-    .topbar-inner{padding:10px 42px 10px 12px; gap:8px;}
+    .topbar-inner{
+      padding:14px 42px 14px 16px; gap:6px;
+      flex-direction:column; align-items:flex-start;
+    }
     .brand{gap:7px;}
     .brand-mark{width:30px;height:30px;font-size:14px;}
     .brand-title .en{font-size:14.5px;}
     .brand-title .bn-sub{font-size:10.5px;}
-    .topbar-note{font-size:10px;}
-    .theme-toggle{width:22px;height:22px;font-size:11px;top:6px;right:6px;}
+    .topbar-note{
+      font-size:11px; text-align:left; width:100%;
+    }
+    .theme-toggle{width:22px;height:22px;font-size:11px;top:8px;right:6px;}
   }
 
   /* ===== Warning banner ===== */
@@ -222,8 +227,8 @@
   .category-pill{
     border:1px solid var(--line); background:var(--pill-bg); padding:8px 10px;border-radius:14px;
     font-size:12.5px; font-weight:600; color:var(--ink); text-align:center;
-    white-space:normal; word-break:break-word; line-height:1.3;
-    display:flex; align-items:center; justify-content:center;
+    white-space:normal; overflow-wrap:break-word; line-height:1.35;
+    display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:4px;
   }
   .category-pill.selected{background:var(--green); border-color:var(--green); color:var(--text-on-color);}
   .category-pill-row{display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:8px; margin-top:16px; margin-bottom:14px;}
@@ -763,7 +768,7 @@ const selectedFormCategories = new Set();
 function renderCategoryPicker(){
   const box = document.getElementById('categoryPicker');
   box.innerHTML = CATEGORIES.map(c =>
-    `<button type="button" class="category-pill" data-cat="${c.key}">${c.key} <span class="bn">${c.bn}</span></button>`
+    `<button type="button" class="category-pill" data-cat="${c.key}"><span class="cat-en">${c.key}</span><span class="bn">${c.bn}</span></button>`
   ).join('');
   box.querySelectorAll('.category-pill').forEach(btn => {
     btn.addEventListener('click', () => {
@@ -1160,7 +1165,7 @@ function renderCategoryFilterRow(){
   const row = document.getElementById('categoryFilterRow');
   const pills = [{ key: 'ALL', bn: 'সকল' }, ...CATEGORIES];
   row.innerHTML = pills.map(c =>
-    `<button class="category-pill ${currentCategoryFilter === c.key ? 'selected' : ''}" data-cat="${c.key}">${c.key === 'ALL' ? 'All Categories' : c.key} <span class="bn">${c.bn}</span></button>`
+    `<button class="category-pill ${currentCategoryFilter === c.key ? 'selected' : ''}" data-cat="${c.key}"><span class="cat-en">${c.key === 'ALL' ? 'All Categories' : c.key}</span><span class="bn">${c.bn}</span></button>`
   ).join('');
   row.querySelectorAll('.category-pill').forEach(btn => {
     btn.addEventListener('click', () => {
