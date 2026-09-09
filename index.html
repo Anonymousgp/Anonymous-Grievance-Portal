@@ -427,7 +427,10 @@
   @media (max-width:600px){
     .admin-header{padding:12px 14px;}
     .admin-body{padding:14px;}
-    .stat-box{padding:10px 14px;min-width:100px;}
+    .stat-row{display:grid; grid-template-columns:repeat(2, 1fr); gap:10px;}
+    .stat-row .stat-box{min-width:0;}
+    .stat-row .stat-box:last-child{grid-column:1 / -1;}
+    .stat-box{padding:10px 14px;}
     .stat-box .num{font-size:20px;}
   }
   .stat-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;}
@@ -444,6 +447,26 @@
   table th{background:var(--table-header-bg);font-size:12px;}
   table tbody tr{cursor:pointer;}
   table tbody tr:hover{background:var(--hover-bg);}
+
+  /* Below 700px, turn the admin table into stacked cards instead of a horizontally-scrolling table. */
+  @media (max-width:700px){
+    #adminTable thead{display:none;}
+    #adminTable, #adminTable tbody, #adminTable tr, #adminTable td{display:block; width:100%;}
+    #adminTable tr{
+      border:1px solid var(--line); border-radius:var(--radius); margin-bottom:12px; padding:10px 12px;
+      background:var(--paper-raised);
+    }
+    #adminTable td{
+      border-bottom:1px solid var(--divider-soft); padding:8px 0; max-width:none !important;
+      white-space:normal !important;
+    }
+    #adminTable td:last-child{border-bottom:none;}
+    #adminTable td::before{
+      content: attr(data-label);
+      display:block; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.3px;
+      color:var(--ink-soft); margin-bottom:3px;
+    }
+  }
   .row-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
   .row-actions select{padding:5px;border-radius:3px;border:1px solid var(--line);font-size:12px;}
   .btn-mini{border:1px solid var(--line);background:var(--pill-bg);padding:5px 10px;border-radius:3px;font-size:12px;font-weight:600;color:var(--ink);}
@@ -1507,15 +1530,15 @@ function renderAdminDashboard(){
   }
   tbody.innerHTML = list.map(p => `
     <tr data-id="${p.id}">
-      <td style="white-space:nowrap;"><strong>${p.complaint_number || ''}</strong></td>
-      <td style="white-space:nowrap;">${dateLabel(p.created_at)}</td>
-      <td><strong>${escapeHtml(p.topic)}</strong></td>
-      <td style="font-size:12px;max-width:140px;">${(p.categories || []).join(', ')}</td>
-      <td>${p.division}<br>${p.district}<br>${p.upazila}<br>${p.thana}</td>
-      <td style="max-width:260px;">${escapeHtml(p.details).slice(0,180)}${p.details.length>180?'…':''}</td>
-      <td>👍${p.votes_true} 👎${p.votes_false} ✅${p.votes_solved} ⏳${p.votes_unsolved}</td>
-      <td>${STATUS_LABELS[p.status].en}</td>
-      <td>
+      <td data-label="Complaint No." style="white-space:nowrap;"><strong>${p.complaint_number || ''}</strong></td>
+      <td data-label="Date" style="white-space:nowrap;">${dateLabel(p.created_at)}</td>
+      <td data-label="Topic"><strong>${escapeHtml(p.topic)}</strong></td>
+      <td data-label="Category" style="font-size:12px;max-width:140px;">${(p.categories || []).join(', ')}</td>
+      <td data-label="Location">${p.division}<br>${p.district}<br>${p.upazila}<br>${p.thana}</td>
+      <td data-label="Details" style="max-width:260px;">${escapeHtml(p.details).slice(0,180)}${p.details.length>180?'…':''}</td>
+      <td data-label="Reactions">👍${p.votes_true} 👎${p.votes_false} ✅${p.votes_solved} ⏳${p.votes_unsolved}</td>
+      <td data-label="Status">${STATUS_LABELS[p.status].en}</td>
+      <td data-label="Actions">
         <div class="row-actions">
           <button class="btn-mini" data-id="${p.id}" data-action="view">View</button>
           <select data-id="${p.id}" class="statusSelect">
