@@ -451,14 +451,20 @@
   /* Below 700px, turn the admin table into stacked cards instead of a horizontally-scrolling table. */
   @media (max-width:700px){
     #adminTable thead{display:none;}
-    #adminTable, #adminTable tbody, #adminTable tr, #adminTable td{display:block; width:100%;}
+    #adminTable, #adminTable tbody{display:block; width:100%;}
     #adminTable tr{
+      display:grid; grid-template-columns:1fr 1fr; gap:0 12px;
       border:1px solid var(--line); border-radius:var(--radius); margin-bottom:12px; padding:10px 12px;
       background:var(--paper-raised);
     }
     #adminTable td{
-      border-bottom:1px solid var(--divider-soft); padding:8px 0; max-width:none !important;
-      white-space:normal !important;
+      display:block; border-bottom:1px solid var(--divider-soft); padding:8px 0; max-width:none !important;
+      white-space:normal !important; overflow-wrap:break-word;
+    }
+    /* Complaint No. + Date pair up, then Topic + Category pair up.
+       Location, Details, Reactions, Status, and Actions each get their own full-width row. */
+    #adminTable td:nth-child(5), #adminTable td:nth-child(n+6){
+      grid-column: 1 / -1;
     }
     #adminTable td:last-child{border-bottom:none;}
     #adminTable td::before{
