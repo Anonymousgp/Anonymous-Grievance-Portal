@@ -427,11 +427,6 @@
   @media (max-width:600px){
     .admin-header{padding:12px 14px;}
     .admin-body{padding:14px;}
-    .stat-row{display:grid; grid-template-columns:repeat(2, 1fr); gap:10px;}
-    .stat-row .stat-box{min-width:0;}
-    .stat-row .stat-box:last-child{grid-column:1 / -1;}
-    .stat-box{padding:10px 14px;}
-    .stat-box .num{font-size:20px;}
   }
   .stat-row{display:flex;gap:14px;flex-wrap:wrap;margin-bottom:20px;}
   .stat-box{background:var(--paper-raised);border:1px solid var(--line);border-radius:var(--radius);padding:14px 20px;min-width:130px;cursor:pointer;transition:box-shadow .15s, border-color .15s;}
@@ -439,6 +434,12 @@
   .stat-box.active{border-color:var(--stat-accent); background:var(--chip-bg); box-shadow:0 2px 8px rgba(15,92,63,.18);}
   .stat-box .num{font-size:26px;font-weight:800;color:var(--stat-accent);}
   .stat-box .lbl{font-size:12px;color:var(--ink-soft);}
+  @media (max-width:600px){
+    .stat-row{display:grid; grid-template-columns:repeat(2, 1fr); gap:10px;}
+    .stat-box{min-width:0; width:100%; padding:10px 14px; box-sizing:border-box;}
+    .stat-row .stat-box:last-child{grid-column:1 / -1;}
+    .stat-box .num{font-size:20px;}
+  }
   .admin-tabs{display:flex;gap:6px;margin-bottom:16px;border-bottom:1px solid var(--line);}
   .admin-tab{padding:10px 16px;background:none;border:none;font-weight:600;font-size:13.5px;color:var(--ink-soft);border-bottom:2px solid transparent;}
   .admin-tab.active{color:var(--stat-accent);border-bottom-color:var(--stat-accent);}
@@ -467,6 +468,13 @@
       grid-column: 1 / -1;
     }
     #adminTable td:last-child{border-bottom:none;}
+    /* Location is the exception: keep it on one line, matching a breadcrumb (Division > District > Upazila > Thana).
+       If a particular combination is unusually long, it gets its own small horizontal scroll rather than
+       wrapping or breaking the rest of the card's layout. */
+    #adminTable td:nth-child(5){
+      white-space:nowrap !important; overflow-x:auto; -webkit-overflow-scrolling:touch;
+      font-size:12.5px; padding-bottom:10px;
+    }
     #adminTable td::before{
       content: attr(data-label);
       display:block; font-size:10.5px; font-weight:700; text-transform:uppercase; letter-spacing:.3px;
@@ -1540,7 +1548,7 @@ function renderAdminDashboard(){
       <td data-label="Date" style="white-space:nowrap;">${dateLabel(p.created_at)}</td>
       <td data-label="Topic"><strong>${escapeHtml(p.topic)}</strong></td>
       <td data-label="Category" style="font-size:12px;max-width:140px;">${(p.categories || []).join(', ')}</td>
-      <td data-label="Location">${p.division}<br>${p.district}<br>${p.upazila}<br>${p.thana}</td>
+      <td data-label="Location" style="white-space:nowrap;">${p.division} &rsaquo; ${p.district} &rsaquo; ${p.upazila} &rsaquo; ${p.thana}</td>
       <td data-label="Details" style="max-width:260px;">${escapeHtml(p.details).slice(0,180)}${p.details.length>180?'…':''}</td>
       <td data-label="Reactions">👍${p.votes_true} 👎${p.votes_false} ✅${p.votes_solved} ⏳${p.votes_unsolved}</td>
       <td data-label="Status">${STATUS_LABELS[p.status].en}</td>
