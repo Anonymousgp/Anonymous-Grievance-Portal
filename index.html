@@ -377,6 +377,30 @@
   [data-theme="dark"] .btn-primary:hover{background:#c94a42;}
   .form-note{font-size:12px;color:var(--ink-soft); margin-top:10px;}
 
+  /* Attachments: upload field, preview chips, and click-to-view (never auto-displayed inline) */
+  .attachment-hint{font-size:11.5px;color:var(--ink-soft);margin-top:6px;line-height:1.45;}
+  .attachment-preview-list{display:flex;flex-wrap:wrap;gap:6px;margin-top:8px;}
+  .attachment-chip{
+    display:inline-flex;align-items:center;gap:4px;background:var(--chip-bg);border:1px solid var(--chip-border);
+    padding:3px 8px 3px 10px;border-radius:14px;font-size:12px;color:var(--ink);max-width:200px;
+  }
+  .attachment-chip span{overflow:hidden;text-overflow:ellipsis;white-space:nowrap;}
+  .attachment-chip button{background:none;border:none;color:var(--red);font-weight:700;cursor:pointer;padding:0 2px;flex:none;}
+  .attachment-chip-row{display:flex;flex-wrap:wrap;gap:8px;}
+  .attachment-chip-btn{
+    border:1px solid var(--line);background:var(--pill-bg);color:var(--ink);padding:6px 12px;border-radius:20px;
+    font-size:12.5px;font-weight:600;
+  }
+  .attachment-chip-btn:hover{border-color:var(--gold);}
+  .attachment-removed-note{margin-top:16px;font-size:12.5px;color:var(--ink-soft);}
+  .lightbox-overlay{
+    position:fixed;inset:0;background:rgba(0,0,0,.88);display:none;align-items:center;justify-content:center;
+    z-index:1100; padding:24px;
+  }
+  .lightbox-overlay.open{display:flex;}
+  .lightbox-overlay img{max-width:100%;max-height:90vh;border-radius:4px;}
+  .lightbox-close{position:absolute;top:16px;right:22px;background:none;border:none;color:#fff;font-size:34px;cursor:pointer;line-height:1;}
+
   .toast{
     position:fixed;bottom:20px;left:50%;transform:translateX(-50%);
     background:var(--green-deep);color:var(--text-on-color);padding:12px 22px;border-radius:24px;font-size:14px;
@@ -563,6 +587,17 @@
         <label>Details <span class="bn-sub bn">বিস্তারিত বিবরণ</span></label>
         <textarea id="fDetails" maxlength="2000" placeholder="Describe the issue clearly. Do not include any names or contact numbers." required></textarea>
       </div>
+      <div class="field">
+        <label>Attachments (optional) <span class="bn-sub bn">সংযুক্তি (ঐচ্ছিক)</span></label>
+        <input type="file" id="fAttachments" accept="image/jpeg,image/png,image/webp,application/pdf,.xls,.xlsx,.csv" multiple>
+        <div class="attachment-hint">
+          Up to 3 files, 5MB each — images, PDF, or Excel.
+          <b>Do not include photos of faces, ID cards, license plates, or any phone numbers.</b>
+          Files are automatically deleted after 6 months.<br>
+          <span class="bn">সর্বোচ্চ ৩টি ফাইল, প্রতিটি ৫MB পর্যন্ত — ছবি, PDF বা এক্সেল। <b>কারো মুখ, এনআইডি, গাড়ির নম্বর প্লেট বা ফোন নম্বরের ছবি দেবেন না।</b> ফাইলগুলো ৬ মাস পর স্বয়ংক্রিয়ভাবে মুছে ফেলা হয়।</span>
+        </div>
+        <div id="attachmentPreviewList" class="attachment-preview-list"></div>
+      </div>
       <button type="submit" class="btn-primary">Submit Anonymously <span class="bn">/ বেনামে জমা দিন</span></button>
       <div class="form-note">Your complaint will be reviewed by an admin before appearing publicly. No identifying data is stored.<br><span class="bn">যাচাইয়ের পর অভিযোগটি প্রকাশ্যে প্রকাশ করা হবে। কোনো পরিচয়মূলক তথ্য সংরক্ষণ করা হয় না।</span></div>
     </form>
@@ -611,6 +646,12 @@
 </footer>
 
 <div class="toast" id="toast"></div>
+
+<!-- Attachment lightbox (images open here; PDF/Excel open in a new tab instead) -->
+<div class="lightbox-overlay" id="lightboxOverlay">
+  <button class="lightbox-close" id="lightboxClose">&times;</button>
+  <img id="lightboxImg" src="" alt="Attachment preview">
+</div>
 
 <!-- COMPLAINT DETAIL MODAL (shared by public feed and admin table) -->
 <div class="modal-overlay" id="detailOverlay">
@@ -951,6 +992,118 @@ fThana.addEventListener('change', () => {
 });
 
 /* ============ Submit complaint ============ */
+/* ============ Attachments: selection, compression, and upload ============ */
+const MAX_ATTACHMENTS = 3;
+const MAX_ATTACHMENT_BYTES = 5 * 1024 * 1024; // 5MB
+const ALLOWED_ATTACHMENT_TYPES = [
+  'image/jpeg','image/png','image/webp','application/pdf',
+  'application/vnd.ms-excel',
+  'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+  'text/csv'
+];
+let selectedFiles = []; // [{ blob, name, type }]
+
+// Re-encoding an image through <canvas> both shrinks it and strips EXIF metadata
+// (GPS location, phone model, etc.) automatically — the redraw never carries that data over.
+function compressImageFile(file, maxDim = 1600, quality = 0.8){
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onerror = () => reject(new Error('read failed'));
+    reader.onload = (e) => {
+      const img = new Image();
+      img.onerror = () => reject(new Error('image decode failed'));
+      img.onload = () => {
+        let { width, height } = img;
+        if(width > maxDim || height > maxDim){
+          if(width > height){ height = Math.round(height * maxDim / width); width = maxDim; }
+          else { width = Math.round(width * maxDim / height); height = maxDim; }
+        }
+        const canvas = document.createElement('canvas');
+        canvas.width = width; canvas.height = height;
+        canvas.getContext('2d').drawImage(img, 0, 0, width, height);
+        canvas.toBlob(blob => blob ? resolve(blob) : reject(new Error('toBlob failed')), 'image/jpeg', quality);
+      };
+      img.src = e.target.result;
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function renderAttachmentPreview(){
+  const box = document.getElementById('attachmentPreviewList');
+  box.innerHTML = selectedFiles.map((f, i) =>
+    `<span class="attachment-chip"><span>${escapeHtml(f.name)}</span><button type="button" data-i="${i}" title="Remove">&times;</button></span>`
+  ).join('');
+  box.querySelectorAll('button').forEach(btn => {
+    btn.addEventListener('click', () => {
+      selectedFiles.splice(Number(btn.dataset.i), 1);
+      renderAttachmentPreview();
+    });
+  });
+}
+
+document.getElementById('fAttachments').addEventListener('change', async (e) => {
+  const files = Array.from(e.target.files).slice(0, MAX_ATTACHMENTS);
+  if(e.target.files.length > MAX_ATTACHMENTS){
+    showToast(`Only the first ${MAX_ATTACHMENTS} files were kept. / প্রথম ${MAX_ATTACHMENTS}টি ফাইল রাখা হয়েছে।`);
+  }
+  selectedFiles = [];
+  for(const file of files){
+    if(!ALLOWED_ATTACHMENT_TYPES.includes(file.type)){
+      showToast(`"${file.name}" isn't an allowed file type and was skipped.`);
+      continue;
+    }
+    if(file.size > MAX_ATTACHMENT_BYTES){
+      showToast(`"${file.name}" is over 5MB and was skipped.`);
+      continue;
+    }
+    if(file.type.startsWith('image/')){
+      try {
+        const compressed = await compressImageFile(file);
+        selectedFiles.push({ blob: compressed, name: file.name.replace(/\.[^.]+$/, '') + '.jpg', type: 'image/jpeg' });
+      } catch(err){
+        console.error(err);
+        showToast(`Could not process image "${file.name}".`);
+      }
+    } else {
+      selectedFiles.push({ blob: file, name: file.name, type: file.type });
+    }
+  }
+  e.target.value = ''; // allow re-selecting the same filename later if removed
+  renderAttachmentPreview();
+});
+
+async function uploadSelectedAttachments(complaintId){
+  const urls = [];
+  for(const f of selectedFiles){
+    const safeName = f.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+    const path = `${complaintId}/${Date.now()}_${Math.random().toString(36).slice(2)}_${safeName}`;
+    const { error: upErr } = await sb.storage.from('attachments').upload(path, f.blob, { contentType: f.type });
+    if(upErr){ console.error(upErr); continue; }
+    const { data: urlData } = sb.storage.from('attachments').getPublicUrl(path);
+    if(urlData && urlData.publicUrl) urls.push(urlData.publicUrl);
+  }
+  return urls;
+}
+
+function isImageUrl(url){ return /\.(jpe?g|png|webp|gif)(\?.*)?$/i.test(url); }
+function isPdfUrl(url){ return /\.pdf(\?.*)?$/i.test(url); }
+
+function openAttachment(url){
+  if(isImageUrl(url)){
+    document.getElementById('lightboxImg').src = url;
+    document.getElementById('lightboxOverlay').classList.add('open');
+  } else {
+    window.open(url, '_blank', 'noopener');
+  }
+}
+document.getElementById('lightboxClose').addEventListener('click', () => {
+  document.getElementById('lightboxOverlay').classList.remove('open');
+});
+document.getElementById('lightboxOverlay').addEventListener('click', (e) => {
+  if(e.target.id === 'lightboxOverlay') document.getElementById('lightboxOverlay').classList.remove('open');
+});
+
 document.getElementById('complaintForm').addEventListener('submit', async (e) => {
   e.preventDefault();
   const division = fDivision.value;
@@ -977,25 +1130,48 @@ document.getElementById('complaintForm').addEventListener('submit', async (e) =>
 
   // NOTE: complaint_number, status, and vote counts are set automatically
   // by the database — we never send them from the client.
-  const { error } = await sb.from('complaints').insert({
+  const { data: inserted, error } = await sb.from('complaints').insert({
     division, district, upazila, thana, topic, details,
     categories: [...selectedFormCategories]
-  });
-
-  submitBtn.disabled = false;
-  submitBtn.innerHTML = 'Submit Anonymously <span class="bn">/ বেনামে জমা দিন</span>';
+  }).select().single();
 
   if(error){
+    submitBtn.disabled = false;
+    submitBtn.innerHTML = 'Submit Anonymously <span class="bn">/ বেনামে জমা দিন</span>';
     console.error(error);
     showToast("Something went wrong. Please try again. / একটি ত্রুটি হয়েছে, আবার চেষ্টা করুন।");
     return;
   }
+
+  // The complaint itself is already saved successfully at this point. Attachments are
+  // uploaded as a best-effort second step — if this part fails (including the storage
+  // budget being full), the complaint still stands; only the attachment gets dropped.
+  if(selectedFiles.length > 0 && inserted){
+    submitBtn.textContent = "Uploading attachments... / সংযুক্তি আপলোড হচ্ছে...";
+    const urls = await uploadSelectedAttachments(inserted.id);
+    if(urls.length > 0){
+      const { error: attachErr } = await sb.from('complaints')
+        .update({ attachments: urls, attachment_count: urls.length })
+        .eq('id', inserted.id);
+      if(attachErr){
+        console.error(attachErr);
+        showToast("Complaint submitted, but attachments couldn't be saved. / অভিযোগ জমা হয়েছে, তবে সংযুক্তি সংরক্ষণ করা যায়নি।");
+      }
+    } else {
+      showToast("Complaint submitted, but attachments couldn't be uploaded. / অভিযোগ জমা হয়েছে, তবে সংযুক্তি আপলোড করা যায়নি।");
+    }
+  }
+
+  submitBtn.disabled = false;
+  submitBtn.innerHTML = 'Submit Anonymously <span class="bn">/ বেনামে জমা দিন</span>';
 
   e.target.reset();
   resetUpazilaThana();
   fDistrict.innerHTML = '<option value="">Select division first</option>'; fDistrict.disabled = true;
   selectedFormCategories.clear();
   document.querySelectorAll('#categoryPicker .category-pill.selected').forEach(b => b.classList.remove('selected'));
+  selectedFiles = [];
+  renderAttachmentPreview();
   showToast("Complaint submitted for review. / যাচাইয়ের জন্য অভিযোগ জমা হয়েছে।");
   renderAll();
 });
@@ -1379,8 +1555,19 @@ function openDetailModal(p, opts = {}){
       <span>✅ Solved: ${p.votes_solved}</span>
       <span>⏳ Unsolved: ${p.votes_unsolved}</span>
     </div>
+    ${(p.attachments && p.attachments.length > 0) ? `
+      <div class="lbl" style="font-size:11px;color:var(--ink-soft);text-transform:uppercase;letter-spacing:.3px;margin:16px 0 6px;">Attachments</div>
+      <div class="attachment-chip-row">
+        ${p.attachments.map((url, i) => `<button type="button" class="attachment-chip-btn" data-url="${escapeHtml(url)}">${isImageUrl(url) ? '🖼️' : (isPdfUrl(url) ? '📄' : '📊')} File ${i+1}</button>`).join('')}
+      </div>
+    ` : (p.attachment_count > 0 ? `
+      <div class="attachment-removed-note">📎 ${p.attachment_count} attachment${p.attachment_count > 1 ? 's' : ''} automatically removed after 6 months. <span class="bn">/ ৬ মাস পর সংযুক্তি স্বয়ংক্রিয়ভাবে মুছে ফেলা হয়েছে।</span></div>
+    ` : '')}
     ${p.status !== 'pending' ? '<button class="share-btn" id="modalShareBtn" style="margin-top:16px;">🔗 Share this complaint</button>' : ''}
   `;
+  body.querySelectorAll('.attachment-chip-btn').forEach(btn => {
+    btn.addEventListener('click', () => openAttachment(btn.dataset.url));
+  });
   const modalShareBtn = document.getElementById('modalShareBtn');
   if(modalShareBtn) modalShareBtn.addEventListener('click', () => shareComplaint(p));
   document.getElementById('detailOverlay').classList.add('open');
