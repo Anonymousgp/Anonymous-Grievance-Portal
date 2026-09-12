@@ -201,7 +201,8 @@
 
   /* ===== Layout ===== */
   .wrap{max-width:1180px;margin:0 auto;padding:24px 20px 60px;}
-  .layout{display:grid; grid-template-columns:250px 1fr; gap:24px; align-items:start;}
+  .layout{display:grid; grid-template-columns:220px 1fr 220px; gap:24px; align-items:start;}
+  @media (max-width:1100px){ .layout{grid-template-columns:200px 1fr 200px; gap:16px;} }
   @media (max-width:860px){ .layout{grid-template-columns:1fr;} }
 
   .panel{
@@ -233,9 +234,7 @@
     display:flex; flex-wrap:wrap; align-items:center; justify-content:center; gap:4px;
   }
   .category-pill.selected{background:var(--green); border-color:var(--green); color:var(--text-on-color);}
-  .category-pill-row{display:grid; grid-template-columns:repeat(auto-fill, minmax(140px, 1fr)); gap:8px; margin-top:16px; margin-bottom:14px;}
-  .category-pill-row .category-pill{background:var(--paper-raised);}
-  .category-pill-row .category-pill.selected{background:var(--green-deep); border-color:var(--green-deep);}
+  /* (category filter is now the right-sidebar list below, reusing .district-list styling) */
   .post-category-tag{
     display:inline-block; font-size:11px; font-weight:600; color:var(--stat-accent);
     background:var(--chip-bg); border:1px solid var(--chip-border); padding:2px 9px;border-radius:12px;
@@ -245,9 +244,16 @@
   .district-list button{
     width:100%;text-align:left;background:none;border:none;padding:8px 6px;
     font-size:13.5px;color:var(--ink); border-radius:2px;
+    display:flex; align-items:center; justify-content:space-between; gap:6px;
   }
+  .district-list button > span:first-child{overflow:hidden; text-overflow:ellipsis; white-space:nowrap; min-width:0;}
   .district-list button:hover{background:var(--table-header-bg);}
   .district-list button.active{background:var(--green); color:var(--text-on-color);}
+  .count-badge{
+    background:var(--count-bg); color:var(--ink-soft); font-size:11px; font-weight:700;
+    padding:1px 7px; border-radius:20px; flex:none;
+  }
+  .district-list button.active .count-badge{background:rgba(255,255,255,.25); color:var(--text-on-color);}
 
   /* Complaint panel (full width, top of page) */
   .complaint-panel{margin-bottom:18px;}
@@ -551,24 +557,24 @@
     <form id="complaintForm">
       <div class="form-grid">
         <div class="field">
-          <label>Division <span class="bn-sub bn">বিভাগ</span></label>
-          <select id="fDivision" required></select>
+          <label>Division <span class="bn-sub bn">বিভাগ</span> <span style="font-weight:400;color:var(--ink-soft);">(optional)</span></label>
+          <select id="fDivision"></select>
         </div>
         <div class="field">
-          <label>District <span class="bn-sub bn">জেলা</span></label>
-          <select id="fDistrict" required disabled><option value="">Select division first</option></select>
+          <label>District <span class="bn-sub bn">জেলা</span> <span style="font-weight:400;color:var(--ink-soft);">(optional)</span></label>
+          <select id="fDistrict" disabled><option value="">Select division first</option></select>
         </div>
         <div class="field">
-          <label>Upazila <span class="bn-sub bn">উপজেলা</span></label>
-          <select id="fUpazila" required disabled><option value="">Select district first</option></select>
+          <label>Upazila <span class="bn-sub bn">উপজেলা</span> <span style="font-weight:400;color:var(--ink-soft);">(optional)</span></label>
+          <select id="fUpazila" disabled><option value="">Select district first</option></select>
         </div>
         <div class="field" id="upazilaOtherWrap" style="display:none;">
           <label>Enter Upazila name <span class="bn-sub bn">উপজেলার নাম লিখুন</span></label>
           <input type="text" id="fUpazilaOther">
         </div>
         <div class="field">
-          <label>Thana <span class="bn-sub bn">থানা</span></label>
-          <select id="fThana" required disabled><option value="">Select district first</option></select>
+          <label>Thana <span class="bn-sub bn">থানা</span> <span style="font-weight:400;color:var(--ink-soft);">(optional)</span></label>
+          <select id="fThana" disabled><option value="">Select district first</option></select>
         </div>
         <div class="field" id="thanaOtherWrap" style="display:none;">
           <label>Enter Thana name <span class="bn-sub bn">থানার নাম লিখুন</span></label>
@@ -580,7 +586,7 @@
         <input type="text" id="fTopic" maxlength="120" placeholder="Short title of the issue" required>
       </div>
       <div class="field">
-        <label>Category <span class="bn-sub bn">বিষয়শ্রেণী</span> — <span style="font-weight:400;color:var(--ink-soft);">select all that apply</span></label>
+        <label>Category <span class="bn-sub bn">বিষয়শ্রেণী</span> — <span style="font-weight:400;color:var(--ink-soft);">optional, select all that apply (defaults to "Other" if none selected)</span></label>
         <div class="category-pills" id="categoryPicker"></div>
       </div>
       <div class="field">
@@ -605,7 +611,7 @@
 
   <div class="layout">
 
-    <!-- SIDEBAR: district filter (collapsible on mobile, open sidebar on desktop) -->
+    <!-- LEFT SIDEBAR: district filter (collapsible on mobile, open sidebar on desktop) -->
     <div class="sidebar">
       <details class="panel district-details" id="districtDetails" open>
         <summary>Filter by District<span class="bn-sub">জেলা অনুযায়ী ফিল্টার করুন</span></summary>
@@ -623,8 +629,6 @@
         </div>
       </div>
 
-      <div class="category-pill-row" id="categoryFilterRow"></div>
-
       <div class="feed-controls">
         <div id="activeFilterChip"></div>
         <div style="display:flex;align-items:center;gap:8px;">
@@ -636,6 +640,14 @@
 
       <div id="feed"></div>
       <div id="pagination" class="pagination-bar"></div>
+    </div>
+
+    <!-- RIGHT SIDEBAR: category filter with counts (collapsible on mobile, open sidebar on desktop) -->
+    <div class="sidebar">
+      <details class="panel district-details" id="categoryDetails" open>
+        <summary>Filter by Category<span class="bn-sub">বিষয়শ্রেণী অনুযায়ী ফিল্টার করুন</span></summary>
+        <ul class="district-list" id="categoryFilterList"></ul>
+      </details>
     </div>
   </div>
 </div>
@@ -927,6 +939,14 @@ function escapeHtml(str){
   d.textContent = str;
   return d.innerHTML;
 }
+function generateUUID(){
+  if(window.crypto && crypto.randomUUID) return crypto.randomUUID();
+  // Fallback for older browsers / non-secure contexts — RFC4122-ish v4 UUID.
+  return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, c => {
+    const r = Math.random() * 16 | 0, v = c === 'x' ? r : (r & 0x3 | 0x8);
+    return v.toString(16);
+  });
+}
 
 /* ============ Populate location dropdowns (submission form) ============ */
 const fDivision = document.getElementById('fDivision');
@@ -1115,25 +1135,34 @@ document.getElementById('complaintForm').addEventListener('submit', async (e) =>
   const topic = document.getElementById('fTopic').value.trim();
   const details = document.getElementById('fDetails').value.trim();
 
-  if(!division || !district || !upazila || !thana || !topic || !details){
-    showToast("Please fill in all fields. / সব ঘর পূরণ করুন।");
+  if(!topic || !details){
+    showToast("Please fill in Topic and Details. / বিষয় ও বিস্তারিত বিবরণ পূরণ করুন।");
     return;
   }
-  if(selectedFormCategories.size === 0){
-    showToast("Please select at least one category. / অন্তত একটি বিষয়শ্রেণী নির্বাচন করুন।");
-    return;
-  }
+  const finalDivision = division || 'Not specified';
+  const finalDistrict = district || 'Not specified';
+  const finalUpazila = upazila || 'Not specified';
+  const finalThana = thana || 'Not specified';
 
   const submitBtn = e.target.querySelector('button[type=submit]');
   submitBtn.disabled = true;
   submitBtn.textContent = "Submitting... / জমা হচ্ছে...";
 
+  // Generate the ID ourselves and include it in the insert. This matters because our
+  // security policy only lets the public read back complaints that are already approved
+  // (status <> 'pending') — a brand-new complaint is always 'pending' the instant it's
+  // created, so asking Supabase to read the row back immediately after inserting it would
+  // get blocked. Supplying our own ID sidesteps that entirely: we never need to read it back.
+  const newId = generateUUID();
+
   // NOTE: complaint_number, status, and vote counts are set automatically
   // by the database — we never send them from the client.
-  const { data: inserted, error } = await sb.from('complaints').insert({
-    division, district, upazila, thana, topic, details,
-    categories: [...selectedFormCategories]
-  }).select().single();
+  const { error } = await sb.from('complaints').insert({
+    id: newId,
+    division: finalDivision, district: finalDistrict, upazila: finalUpazila, thana: finalThana,
+    topic, details,
+    categories: selectedFormCategories.size > 0 ? [...selectedFormCategories] : ['Other']
+  });
 
   if(error){
     submitBtn.disabled = false;
@@ -1146,13 +1175,13 @@ document.getElementById('complaintForm').addEventListener('submit', async (e) =>
   // The complaint itself is already saved successfully at this point. Attachments are
   // uploaded as a best-effort second step — if this part fails (including the storage
   // budget being full), the complaint still stands; only the attachment gets dropped.
-  if(selectedFiles.length > 0 && inserted){
+  if(selectedFiles.length > 0){
     submitBtn.textContent = "Uploading attachments... / সংযুক্তি আপলোড হচ্ছে...";
-    const urls = await uploadSelectedAttachments(inserted.id);
+    const urls = await uploadSelectedAttachments(newId);
     if(urls.length > 0){
       const { error: attachErr } = await sb.from('complaints')
         .update({ attachments: urls, attachment_count: urls.length })
-        .eq('id', inserted.id);
+        .eq('id', newId);
       if(attachErr){
         console.error(attachErr);
         showToast("Complaint submitted, but attachments couldn't be saved. / অভিযোগ জমা হয়েছে, তবে সংযুক্তি সংরক্ষণ করা যায়নি।");
@@ -1273,7 +1302,10 @@ syncDistrictDetailsOpenState();
 let resizeTimer;
 window.addEventListener('resize', () => {
   clearTimeout(resizeTimer);
-  resizeTimer = setTimeout(syncDistrictDetailsOpenState, 200);
+  resizeTimer = setTimeout(() => {
+    syncDistrictDetailsOpenState();
+    syncCategoryDetailsOpenState();
+  }, 200);
 });
 
 document.getElementById('searchBtn').addEventListener('click', () => {
@@ -1387,24 +1419,45 @@ function renderPagination(totalItems){
   });
 }
 
-function renderCategoryFilterRow(){
-  const row = document.getElementById('categoryFilterRow');
-  const pills = [{ key: 'ALL', bn: 'সকল' }, ...CATEGORIES];
-  row.innerHTML = pills.map(c =>
-    `<button class="category-pill ${currentCategoryFilter === c.key ? 'selected' : ''}" data-cat="${c.key}"><span class="cat-en">${c.key === 'ALL' ? 'All Categories' : c.key}</span><span class="bn">${c.bn}</span></button>`
+function renderCategoryFilterList(){
+  const list = document.getElementById('categoryFilterList');
+  // Counts reflect what's actually visible publicly right now (non-pending posts, already
+  // fetched into publicPosts), same spirit as how the district list works.
+  const counts = {};
+  CATEGORIES.forEach(c => counts[c.key] = 0);
+  publicPosts.forEach(p => {
+    (p.categories || []).forEach(cat => {
+      if(counts[cat] !== undefined) counts[cat]++;
+    });
+  });
+
+  let html = `<li><button data-cat="ALL" class="${currentCategoryFilter==='ALL'?'active':''}"><span>All Categories <span class="bn">সকল</span></span><span class="count-badge">${publicPosts.length}</span></button></li>`;
+  html += CATEGORIES.map(c =>
+    `<li><button data-cat="${c.key}" class="${currentCategoryFilter===c.key?'active':''}"><span>${c.key} <span class="bn">${c.bn}</span></span><span class="count-badge">${counts[c.key]}</span></button></li>`
   ).join('');
-  row.querySelectorAll('.category-pill').forEach(btn => {
+  list.innerHTML = html;
+  list.querySelectorAll('button').forEach(btn => {
     btn.addEventListener('click', () => {
       currentCategoryFilter = btn.dataset.cat;
       currentPage = 1;
       renderFeed();
+      renderCategoryFilterList(); // refresh highlight state
     });
   });
 }
 
+// On desktop, keep the category filter open like a normal sidebar.
+// On mobile, keep it collapsed by default, same behavior as the district filter.
+function syncCategoryDetailsOpenState(){
+  const d = document.getElementById('categoryDetails');
+  if(!d) return;
+  d.open = window.matchMedia('(min-width: 861px)').matches;
+}
+syncCategoryDetailsOpenState();
+
 function renderFeed(){
   document.getElementById('dateFilter').value = currentDateFilter;
-  renderCategoryFilterRow();
+  renderCategoryFilterList();
 
   let filtered = publicPosts.filter(p => currentDistrictFilter === 'ALL' || p.district === currentDistrictFilter);
   if(currentCategoryFilter !== 'ALL'){
