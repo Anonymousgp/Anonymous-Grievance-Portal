@@ -321,11 +321,11 @@
     border:1px solid var(--line); background:var(--pill-bg); padding:7px 12px;border-radius:20px;
     font-size:13px; display:flex; gap:6px; align-items:center; justify-content:center; font-weight:600;
   }
-  .share-btn{
+  .share-btn, .attachment-file-btn{
     border:1px solid var(--line); background:var(--pill-bg); padding:7px 12px;border-radius:20px;
     font-size:13px; display:flex; gap:6px; align-items:center; justify-content:center; font-weight:600; color:var(--ink);
   }
-  .share-btn:hover{border-color:var(--gold);}
+  .share-btn:hover, .attachment-file-btn:hover{border-color:var(--gold);}
   .vote-btn .count{background:var(--count-bg);padding:1px 7px;border-radius:20px;font-size:12px;}
   .vote-btn.true:hover{border-color:#1c6e4a;}
   .vote-btn.false:hover{border-color:#8c3d34;}
@@ -334,12 +334,13 @@
   .vote-btn.voted{opacity:.55; cursor:default;}
   .vote-btn:disabled{cursor:not-allowed;}
 
-  /* On narrow screens, force all 5 reaction tiles into one tidy, equal-width row
-     instead of an uneven 2+2+1 wrap. Drop the text labels, keep icon + count.
+  /* On narrow screens, keep all reaction/attachment/share tiles equal-width and tidy
+     instead of an uneven wrap. Drop the text labels, keep icon + count. Uses auto-fit so
+     this adapts cleanly whether a card has 0 attachments (5 tiles) or a few more (up to 8).
      Scoped to .vote-row only, so it doesn't also shrink the modal's standalone Share button. */
   @media (max-width:480px){
-    .vote-row{display:grid; grid-template-columns:repeat(5, 1fr); gap:4px;}
-    .vote-row .vote-btn, .vote-row .share-btn{padding:7px 2px; font-size:15px; gap:2px;}
+    .vote-row{display:grid; grid-template-columns:repeat(auto-fit, minmax(50px, 1fr)); gap:4px;}
+    .vote-row .vote-btn, .vote-row .share-btn, .vote-row .attachment-file-btn{padding:7px 2px; font-size:15px; gap:2px;}
     .vote-row .vote-label{display:none;}
     .vote-row .vote-btn .count{padding:0 4px; font-size:11px;}
   }
@@ -737,7 +738,7 @@
       <div style="overflow-x:auto;">
         <table id="adminTable">
           <thead><tr>
-            <th>Complaint No.</th><th>Date</th><th>Topic</th><th>Category</th><th>Location</th><th>Details</th><th>Reactions</th><th>Status</th><th>Actions</th>
+            <th>Complaint No.</th><th>Date</th><th>Topic</th><th>Category</th><th>Location</th><th>Details</th><th>Attachments</th><th>Reactions</th><th>Status</th><th>Actions</th>
           </tr></thead>
           <tbody id="adminTableBody"></tbody>
         </table>
@@ -1532,6 +1533,7 @@ function renderFeed(){
         <button class="vote-btn false ${v.false?'voted':''}" ${v.false?'disabled':''} data-id="${p.id}" data-k="false">👎 <span class="vote-label">False</span> <span class="count">${p.votes_false}</span></button>
         <button class="vote-btn solved ${v.solved?'voted':''}" ${v.solved?'disabled':''} data-id="${p.id}" data-k="solved">✅ <span class="vote-label">Solved</span> <span class="count">${p.votes_solved}</span></button>
         <button class="vote-btn unsolved ${v.unsolved?'voted':''}" ${v.unsolved?'disabled':''} data-id="${p.id}" data-k="unsolved">⏳ <span class="vote-label">Unsolved</span> <span class="count">${p.votes_unsolved}</span></button>
+        ${(p.attachments && p.attachments.length > 0) ? p.attachments.map((url, i) => `<button type="button" class="attachment-file-btn" data-url="${escapeHtml(url)}" title="View attachment ${i+1}">${isImageUrl(url) ? '🖼️' : (isPdfUrl(url) ? '📄' : '📊')} <span class="vote-label">File ${i+1}</span></button>`).join('') : ''}
         <button class="share-btn" data-share-id="${p.id}" title="Share this complaint">🔗 <span class="vote-label">Share</span></button>
       </div>
     </div>`;
@@ -1542,6 +1544,12 @@ function renderFeed(){
       e.stopPropagation();
       const post = publicPosts.find(p => p.id === btn.dataset.shareId);
       if(post) shareComplaint(post);
+    });
+  });
+  feed.querySelectorAll('.attachment-file-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation(); // don't also trigger the card's "open details" click
+      openAttachment(btn.dataset.url);
     });
   });
 
@@ -1782,7 +1790,7 @@ function renderAdminDashboard(){
 
   const tbody = document.getElementById('adminTableBody');
   if(list.length === 0){
-    tbody.innerHTML = `<tr><td colspan="9" style="text-align:center;color:var(--ink-soft);padding:20px;">No complaints found.</td></tr>`;
+    tbody.innerHTML = `<tr><td colspan="10" style="text-align:center;color:var(--ink-soft);padding:20px;">No complaints found.</td></tr>`;
     return;
   }
   tbody.innerHTML = list.map(p => `
@@ -1793,6 +1801,11 @@ function renderAdminDashboard(){
       <td data-label="Category" style="font-size:12px;max-width:120px;">${(p.categories || []).join(', ')}</td>
       <td data-label="Location">${p.division} &rsaquo; ${p.district} &rsaquo; ${p.upazila} &rsaquo; ${p.thana}</td>
       <td data-label="Details" style="max-width:220px;">${escapeHtml(p.details).slice(0,150)}${p.details.length>150?'…':''}</td>
+      <td data-label="Attachments" style="white-space:nowrap;">${
+        (p.attachments && p.attachments.length > 0)
+          ? p.attachments.map((url, i) => `<button type="button" class="btn-mini attachment-file-btn" data-url="${escapeHtml(url)}" title="View attachment ${i+1}">${isImageUrl(url) ? '🖼️' : (isPdfUrl(url) ? '📄' : '📊')}</button>`).join(' ')
+          : (p.attachment_count > 0 ? `<span style="font-size:11px;color:var(--ink-soft);">📎 removed</span>` : '—')
+      }</td>
       <td data-label="Reactions">👍${p.votes_true} 👎${p.votes_false} ✅${p.votes_solved} ⏳${p.votes_unsolved}</td>
       <td data-label="Status">${STATUS_LABELS[p.status].en}</td>
       <td data-label="Actions">
@@ -1821,6 +1834,12 @@ function renderAdminDashboard(){
     btn.addEventListener('click', () => {
       const post = adminPosts.find(p => p.id === btn.dataset.id);
       if(post) openDetailModal(post, { admin: true });
+    });
+  });
+  tbody.querySelectorAll('.attachment-file-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation(); // don't also trigger the row's "open full details" click
+      openAttachment(btn.dataset.url);
     });
   });
   tbody.querySelectorAll('.statusSelect').forEach(sel => {
