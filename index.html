@@ -203,7 +203,14 @@
   .wrap{max-width:1180px;margin:0 auto;padding:24px 20px 60px;}
   .layout{display:grid; grid-template-columns:220px 1fr 220px; gap:24px; align-items:start;}
   @media (max-width:1100px){ .layout{grid-template-columns:200px 1fr 200px; gap:16px;} }
-  @media (max-width:860px){ .layout{grid-template-columns:1fr;} }
+  @media (max-width:860px){
+    .layout{grid-template-columns:1fr;}
+    /* Visual order on mobile: district filter, then category filter, then the feed —
+       even though the feed sits between them in the HTML/desktop column layout. */
+    .layout > *:nth-child(1){order:1;} /* district sidebar */
+    .layout > *:nth-child(3){order:2;} /* category sidebar */
+    .layout > *:nth-child(2){order:3;} /* main feed */
+  }
 
   .panel{
     background:var(--paper-raised);
@@ -496,8 +503,8 @@
     #adminTable, #adminTable tbody{display:block; width:100%;}
     #adminTable tr{
       display:grid; grid-template-columns:1fr 1fr; gap:0 12px;
-      border:1px solid var(--line); border-radius:var(--radius); margin-bottom:12px; padding:10px 12px;
-      background:var(--paper-raised);
+      border:1.5px solid var(--chip-border); border-radius:var(--radius); margin-bottom:14px; padding:10px 12px;
+      background:var(--paper-raised); box-shadow:0 1px 5px var(--shadow-color);
     }
     #adminTable td{
       display:block; border-bottom:1px solid var(--divider-soft); padding:8px 0; max-width:none !important;
@@ -523,7 +530,8 @@
     }
   }
   .row-actions{display:flex;gap:6px;flex-wrap:wrap;align-items:center;}
-  .row-actions select{padding:5px;border-radius:3px;border:1px solid var(--line);font-size:12px;}
+  .row-actions select{padding:5px;border-radius:3px;border:1px solid var(--line);font-size:11.5px;width:100%;max-width:100%;box-sizing:border-box;}
+  .row-actions .btn-mini{flex:1 1 auto;}
   .btn-mini{border:1px solid var(--line);background:var(--pill-bg);padding:5px 10px;border-radius:3px;font-size:12px;font-weight:600;color:var(--ink);}
   .btn-mini.danger{color:var(--red);border-color:var(--danger-border);}
   .btn-mini.primary{background:var(--green);color:var(--text-on-color);border:none;}
@@ -738,7 +746,7 @@
       <div style="overflow-x:auto;">
         <table id="adminTable">
           <thead><tr>
-            <th>Complaint No.</th><th>Date</th><th>Topic</th><th>Category</th><th>Location</th><th>Details</th><th>Attachments</th><th>Reactions</th><th>Status</th><th>Actions</th>
+            <th style="width:7%;">Complaint No.</th><th style="width:7%;">Date</th><th style="width:12%;">Topic</th><th style="width:9%;">Category</th><th style="width:13%;">Location</th><th style="width:15%;">Details</th><th style="width:7%;">Attachments</th><th style="width:10%;">Reactions</th><th style="width:7%;">Status</th><th style="width:13%;">Actions</th>
           </tr></thead>
           <tbody id="adminTableBody"></tbody>
         </table>
